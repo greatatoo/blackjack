@@ -1,13 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <Windows.h>
+#include <windows.h>
 
-void showWelcome();
+void startGame();
+
+void initDummyPlayer();
 void initCard();
 void shuffleCard();
 void dealCard();
+
+void showWelcome();
 void bubbleSort();
+
+void clearScreen();
+void pressAnyKeyToContinue();
 
 void testRenderCard(int gap);
 
@@ -16,23 +23,44 @@ typedef struct{
     int deck;   //牌堆
     char *suit; //花色
     char *face; //牌點
+    int point;  //遊戲點數
+    int altPoint;//遊戲點數
     int order;  //出牌順序
     int showCount; //出現次數
 } Card;
 
 int main(){
 
-    srand(time(NULL));
     SetConsoleOutputCP(437);
-
-    testRenderCard(1);
-    //showWelcome();
+    srand(time(NULL));
+    startGame();
 
     return 0;
 }
 
-/*
- * 顯示歡迎畫面
+/**
+ * @brief 開始遊戲
+ */
+void startGame(){
+
+    char choice = '9';
+
+    do{
+        switch(choice){
+        case '1':
+            testRenderCard(1);
+            break;
+        }
+        clearScreen();
+        showWelcome();
+        printf("1) Play\n");
+        printf("0) Quit\n");
+        printf("Choice:");
+    }while((choice=getchar())!='0');
+}
+
+/**
+ * @brief 顯示歡迎畫面
  *
  * 預先將歡迎詞放入一個2維陣列，即字串陣列
  * 歡迎詞有多行字串，每個陣列欄位存放一行字串
@@ -61,42 +89,49 @@ void showWelcome(){
     int lineCount = sizeof(welcome)/sizeof(*welcome);
     int i;
 
-    //清除畫面
-    system("cls");
-
     //逐行印出
     for(i=0; i<lineCount; i++)
         printf("%s\n",*(welcome+i));
-
-    //暫停畫面
-    system("pause");
 }
 
-/*
- * 測試卡牌渲染
- *
- * 參數 int gap 兩張卡牌間的間隔
+/**
+ * @brief 測試卡牌渲染
+ * @param gap 兩張卡牌間的間隔
  */
 void testRenderCard(int gap){
+    clearScreen();
+
+    printf("%c%c%c%c%c",218,196,196,196,191);
+    printf("%*c",gap,32);
+    printf("%c%c%c%c%c",218,196,196,196,191);
+    printf("\n");
+    printf("%c%c%c%c%c",179,6,32,32,179);
+    printf("%*c",gap,32);
+    printf("%c%c%c%c%c",179,6,32,32,179);
+    printf("\n");
+    printf("%c%c%c%c%c",179,32,32,65,179);
+    printf("%*c",gap,32);
+    printf("%c%c%c%c%c",179,32,32,65,179);
+    printf("\n");
+    printf("%c%c%c%c%c",192,196,196,196,217);
+    printf("%*c",gap,32);
+    printf("%c%c%c%c%c",192,196,196,196,217);
+    printf("\n");
+
+    pressAnyKeyToContinue();
+}
+
+/**
+ * @brief 清除畫面
+ */
+void clearScreen(){
     system("cls");
+}
 
-    printf("%c%c%c%c%c",218,196,196,196,191);
-    printf("%*c",gap,32);
-    printf("%c%c%c%c%c",218,196,196,196,191);
-    printf("\n");
-    printf("%c%c%c%c%c",179,6,32,32,179);
-    printf("%*c",gap,32);
-    printf("%c%c%c%c%c",179,6,32,32,179);
-    printf("\n");
-    printf("%c%c%c%c%c",179,32,32,65,179);
-    printf("%*c",gap,32);
-    printf("%c%c%c%c%c",179,32,32,65,179);
-    printf("\n");
-    printf("%c%c%c%c%c",192,196,196,196,217);
-    printf("%*c",gap,32);
-    printf("%c%c%c%c%c",192,196,196,196,217);
-    printf("\n");
-
+/**
+ * @brief 按下任一鍵繼續
+ */
+void pressAnyKeyToContinue(){
     system("pause");
 }
 
