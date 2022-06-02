@@ -3,6 +3,38 @@
 #include <time.h>
 #include <windows.h>
 
+/**
+ * 莊家 Banker
+ * 閒家 Player
+ * 籌碼 Chip
+ * 洗牌 Shuffle
+ * 發牌 Deal
+ * 補牌 Hit 或 Draw
+ * 分牌 Split
+ * 雙倍下注 Double Down
+ * 超過21點 Bust
+ * 投降 Surrender
+ * 停牌 Stand
+ * 牌戲的一盤 Hand
+ */
+
+//定義卡牌資料型態和卡牌屬性
+typedef struct{
+    int deck;   //第N副牌
+    char *suit; //花色
+    char *face; //牌點
+    int point;  //遊戲點數
+    int altPoint;//可替代的遊戲點數
+    int order;  //出牌順序
+    int appeared; //出現次數
+} Card;
+
+typedef struct{
+    char *id; //玩家ID
+    int chip; //籌碼
+    int blackjack; //
+} Player;
+
 void startGame();
 
 void initDummyPlayer();
@@ -18,17 +50,6 @@ void pressAnyKeyToContinue();
 
 void testRenderCard(int gap);
 
-//定義卡牌資料型態和卡牌屬性
-typedef struct{
-    int deck;   //牌堆
-    char *suit; //花色
-    char *face; //牌點
-    int point;  //遊戲點數
-    int altPoint;//遊戲點數
-    int order;  //出牌順序
-    int showCount; //出現次數
-} Card;
-
 int main(){
 
     SetConsoleOutputCP(437);
@@ -43,6 +64,7 @@ int main(){
  */
 void startGame(){
 
+    int indent = 35;
     char choice = '9';
 
     do{
@@ -53,9 +75,10 @@ void startGame(){
         }
         clearScreen();
         showWelcome();
-        printf("1) Play\n");
-        printf("0) Quit\n");
-        printf("Choice:");
+
+        printf("%*s%s\n", indent, " ", "1) Play");
+        printf("%*s%s\n", indent, " ", "0) Quit");
+        printf("\n%*s%s", indent, " ", "Choice:");
     }while((choice=getchar())!='0');
 }
 
@@ -71,20 +94,20 @@ void showWelcome(){
     //歡迎詞
     char *welcome[] = {
         "",
-        "__________.__                 __          ____.              __    ",
-        "\\______   \\  | _____    ____ |  | __     |    |____    ____ |  | __",
-        " |    |  _/  | \\__  \\ _/ ___\\|  |/ /     |    \\__  \\ _/ ___\\|  |/ /",
-        " |    |   \\  |__/ __ \\\\  \\___|    <  /\\__|    |/ __ \\\\  \\___|    < ",
-        " |______  /____(____  /\\___  >__|_ \\ \\________(____  /\\___  >__|_ \\",
-        "        \\/          \\/     \\/     \\/               \\/     \\/     \\/",
-        "  _________                    .__           __      __.__         ",
-        " /   _____/__ _________   ____ |  | ___.__. /  \\    /  \\__| ____   ",
-        " \\_____  \\|  |  \\_  __ \\_/ __ \\|  |<   |  | \\   \\/\\/   /  |/    \\  ",
-        " /        \\  |  /|  | \\/\\  ___/|  |_\\___  |  \\        /|  |   |  \\ ",
-        "/_______  /____/ |__|    \\___  >____/ ____|   \\__/\\  / |__|___|  / ",
-        "        \\/                   \\/     \\/             \\/          \\/  ",
+//        "__________.__                 __        ___.              __     ________  ____ ",
+//        "\\______   \\  | _____    ____ |  | __   |   |____    ____ |  | __ \\_____  \\/_   |",
+//        " |    |  _/  | \\__  \\ _/ ___\\|  |/ /   |   \\__  \\ _/ ___\\|  |/ /  /  ____/ |   |",
+//        " |    |   \\  |__/ __ \\\\  \\___|    </\\__|   |/ __ \\\\  \\___|    <  /       \\ |   |",
+//        " |______  /____(____  /\\___  >__|_ \\_______(____  /\\___  >__|_ \\ \\_______ \\|___|",
+//        "        \\/          \\/     \\/     \\/             \\/     \\/     \\/         \\/    ",
+        "            ____  __           __       __           __      ___  ___",
+        "           / __ )/ /___ ______/ /__    / /___ ______/ /__   |__ \\<  /",
+        "          / __  / / __ `/ ___/ //_/_  / / __ `/ ___/ //_/   __/ // / ",
+        "         / /_/ / / /_/ / /__/ ,< / /_/ / /_/ / /__/ ,<     / __// /  ",
+        "        /_____/_/\\__,_/\\___/_/|_|\\____/\\__,_/\\___/_/|_|   /____/_/   ",
         "",
     };
+
     //計算陣列字串的個數 (2D陣列所佔bytes/每個陣列欄位所佔bytes)
     int lineCount = sizeof(welcome)/sizeof(*welcome);
     int i;
@@ -93,6 +116,9 @@ void showWelcome(){
     for(i=0; i<lineCount; i++)
         printf("%s\n",*(welcome+i));
 }
+
+
+
 
 /**
  * @brief 測試卡牌渲染
