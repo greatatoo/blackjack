@@ -6,6 +6,7 @@
 /**
  * 莊家 Banker
  * 閒家 Player
+ * 下注 Bet
  * 籌碼 Chip
  * 洗牌 Shuffle
  * 發牌 Deal
@@ -20,19 +21,23 @@
 
 //定義卡牌資料型態和卡牌屬性
 typedef struct{
-    int deck;   //第N副牌
-    char *suit; //花色
-    char *face; //牌點
-    int point;  //遊戲點數
-    int altPoint;//可替代的遊戲點數
-    int order;  //出牌順序
-    int appeared; //出現次數
+    int deck;       //第N副牌
+    char *suit;     //花色
+    char *face;     //牌點
+    int point;      //遊戲點數
+    int altPoint;   //可替代的遊戲點數
+    int order;      //出牌順序
+    int appeared;   //出現次數
 } Card;
 
+//定義玩家資料型態
 typedef struct{
-    char *id; //玩家ID
-    int chip; //籌碼
-    int blackjack; //
+    char *id;       //玩家ID
+    int chip;       //籌碼
+    int hands;      //玩牌次數
+    int win;        //贏的次數
+    int lose;       //輸的次數
+    int blackjack;  //拿到黑傑克的次數
 } Player;
 
 void startGame();
@@ -43,8 +48,9 @@ void shuffleCard();
 void dealCard();
 
 void showWelcome();
-void bubbleSort();
 
+void arrayAppend();
+void bubbleSort();
 void clearScreen();
 void pressAnyKeyToContinue();
 
@@ -86,7 +92,7 @@ void startGame(){
  * @brief 顯示歡迎畫面
  *
  * 預先將歡迎詞放入一個2維陣列，即字串陣列
- * 歡迎詞有多行字串，每個陣列欄位存放一行字串
+ * 歡迎詞有多行字串，每個陣列元素存放一行字串
  * 若字串內容有倒斜線\，則手動將之跳脫(escape)
  * 參考課程投影片ch09 p24
  */
@@ -94,12 +100,12 @@ void showWelcome(){
     //歡迎詞
     char *welcome[] = {
         "",
-//        "__________.__                 __        ___.              __     ________  ____ ",
-//        "\\______   \\  | _____    ____ |  | __   |   |____    ____ |  | __ \\_____  \\/_   |",
-//        " |    |  _/  | \\__  \\ _/ ___\\|  |/ /   |   \\__  \\ _/ ___\\|  |/ /  /  ____/ |   |",
-//        " |    |   \\  |__/ __ \\\\  \\___|    </\\__|   |/ __ \\\\  \\___|    <  /       \\ |   |",
-//        " |______  /____(____  /\\___  >__|_ \\_______(____  /\\___  >__|_ \\ \\_______ \\|___|",
-//        "        \\/          \\/     \\/     \\/             \\/     \\/     \\/         \\/    ",
+        //        "__________.__                 __        ___.              __     ________  ____ ",
+        //        "\\______   \\  | _____    ____ |  | __   |   |____    ____ |  | __ \\_____  \\/_   |",
+        //        " |    |  _/  | \\__  \\ _/ ___\\|  |/ /   |   \\__  \\ _/ ___\\|  |/ /  /  ____/ |   |",
+        //        " |    |   \\  |__/ __ \\\\  \\___|    </\\__|   |/ __ \\\\  \\___|    <  /       \\ |   |",
+        //        " |______  /____(____  /\\___  >__|_ \\_______(____  /\\___  >__|_ \\ \\_______ \\|___|",
+        //        "        \\/          \\/     \\/     \\/             \\/     \\/     \\/         \\/    ",
         "            ____  __           __       __           __      ___  ___",
         "           / __ )/ /___ ______/ /__    / /___ ______/ /__   |__ \\<  /",
         "          / __  / / __ `/ ___/ //_/_  / / __ `/ ___/ //_/   __/ // / ",
@@ -108,7 +114,7 @@ void showWelcome(){
         "",
     };
 
-    //計算陣列字串的個數 (2D陣列所佔bytes/每個陣列欄位所佔bytes)
+    //計算陣列字串的個數 (2D陣列所佔bytes/每個陣列元素所佔bytes)
     int lineCount = sizeof(welcome)/sizeof(*welcome);
     int i;
 
@@ -116,9 +122,6 @@ void showWelcome(){
     for(i=0; i<lineCount; i++)
         printf("%s\n",*(welcome+i));
 }
-
-
-
 
 /**
  * @brief 測試卡牌渲染
