@@ -3,7 +3,7 @@
 #include <time.h>
 #include <windows.h>
 
-/**
+/*
  * 莊家 Banker
  * 閒家 Player
  * 下注 Bet
@@ -19,10 +19,20 @@
  * 牌戲的一盤 Hand
  */
 
-//定義卡牌資料型態和卡牌屬性
+#define DECK_NUMBER 1
+
+//定義花色 (參考課程 ch10 p24)
+enum Suit{
+    SPADE,  //黑桃
+    HEART,  //紅心
+    DIAMOND,//方塊
+    CLUB    //梅花
+};
+
+//定義卡牌資料型態和卡牌屬性 (參考課程 ch10 p15)
 typedef struct{
     int deck;       //第N副牌
-    char *suit;     //花色
+    enum Suit suit; //花色
     char *face;     //牌點
     int point;      //遊戲點數
     int altPoint;   //可替代的遊戲點數
@@ -30,109 +40,85 @@ typedef struct{
     int appeared;   //出現次數
 } Card;
 
-//定義玩家資料型態
+//定義玩家資料型態和玩家屬性 (參考課程 ch10 p15)
 typedef struct{
-    char *id;       //玩家ID
-    int chip;       //籌碼
-    int hands;      //玩牌次數
-    int win;        //贏的次數
-    int lose;       //輸的次數
-    int blackjack;  //拿到黑傑克的次數
+    char *id;           //玩家ID
+    int chip;           //籌碼
+    int playCount;      //玩牌次數
+    int winCount;       //贏的次數
+    int loseCount;      //輸的次數
+    int blackjackCount; //拿到黑傑克的次數
 } Player;
 
-void startGame();
+void mainMenu();                //主功能選單
+void showWelcome();             //顯示歡迎詞
+void playCardScene();           //玩一場牌局的場景
+void clearScreen();             //清除畫面
+void pressAnyKeyToContinue();   //按下任一鍵繼續
 
-void initDummyPlayer();
-void initCard();
-void shuffleCard();
-void dealCard();
-
-void showWelcome();
-void playCardScene();
-
-void arrayAppend();
-void bubbleSort();
-void clearScreen();
-void pressAnyKeyToContinue();
-
+//XXXXXXX 測試卡牌渲染(測試用，將來會移除) XXXXXXX
 void testRenderCard(int gap);
+void makeDummyPlayer();
+void dumpDummyPlayer();
+//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 int main(){
 
-    SetConsoleOutputCP(437);//印出特殊ASCII字元，參考課程 ch04 p26
-    srand(time(NULL));//亂數，參考課程 ch05 p28
-    startGame();
+    SetConsoleOutputCP(437);//印出特殊ASCII字元 (參考課程 ch04 p26)
+    srand(time(NULL));//用時間來決定亂數 (參考課程 ch05 p28)
+    mainMenu();
 
     return 0;
 }
 
-/**
- * 開始遊戲
- */
-void startGame(){
+//主功能選單
+void mainMenu(){
 
-    /*
-     * TODO 把所有有遊戲的變數放於此處
-     */
-    int indent = 35; //縮排空格個數
-    char choice = '?'; //所選擇的選單號碼
+    char choice = '?'; //選單功能選擇
 
     do{
         switch(choice){
         case '1':
             playCardScene();
             break;
-        case '2':
-            testRenderCard(1);//XXX 純測試用，將來移除
+        case '2': //XXX 純測試用，將來移除
+            //testRenderCard(1);
+            makeDummyPlayer();
+            break;
+        case '3': //XXX 純測試用，將來移除
             break;
         }
         clearScreen();
         showWelcome();
 
-        printf("%*s%s\n", indent, " ", "2) Test");
-        printf("%*s%s\n", indent, " ", "1) Play");
-        printf("%*s%s\n", indent, " ", "0) Quit");
-        printf("\n%*s%s", indent, " ", "Choice:");
+        printf("%35s%s\n", " ", "3) Test2");
+        printf("%35s%s\n", " ", "2) makeDummyPlayer");
+        printf("%35s%s\n", " ", "1) Play");
+        printf("%35s%s\n", " ", "0) Quit");
+        printf("\n%35s%s", " ", "Choice:");
     }while((choice=getchar())!='0');
 }
 
-/**
- * 顯示歡迎畫面
- *
- * 預先將歡迎詞放入一個2維陣列，即字串陣列
- * 歡迎詞有多行字串，每個陣列元素存放一行字串
- * 若字串內容有倒斜線\，則手動將之跳脫(escape)
- * 參考課程ch09 p24
- */
+//顯示歡迎畫面
 void showWelcome(){
     //歡迎詞
-    char *welcome[] = {
-        "",
-        "            ____  __           __       __           __      ___  ___",
-        "           / __ )/ /___ ______/ /__    / /___ ______/ /__   |__ \\<  /",
-        "          / __  / / __ `/ ___/ //_/_  / / __ `/ ___/ //_/   __/ // / ",
-        "         / /_/ / / /_/ / /__/ ,< / /_/ / /_/ / /__/ ,<     / __// /  ",
-        "        /_____/_/\\__,_/\\___/_/|_|\\____/\\__,_/\\___/_/|_|   /____/_/",
-        "",
-    };
-
-    //計算陣列字串的個數 (2D陣列所佔bytes/每個陣列元素所佔bytes)
-    int lineCount = sizeof(welcome)/sizeof(*welcome);
-    int i;
-
-    //逐行印出
-    for(i=0; i<lineCount; i++)
-        printf("%s\n",*(welcome+i));
+    //https://patorjk.com/software/taag/#p=display&f=Slant&t=BlackJack%2021
+    //若字串內容有倒斜線\，則手動將之跳脫(escape) (參考課程 ch09 p24)
+    printf("\n");
+    printf("            ____  __           __       __           __      ___  ___\n");
+    printf("           / __ )/ /___ ______/ /__    / /___ ______/ /__   |__ \\<  /\n");
+    printf("          / __  / / __ `/ ___/ //_/_  / / __ `/ ___/ //_/   __/ // / \n");
+    printf("         / /_/ / / /_/ / /__/ ,< / /_/ / /_/ / /__/ ,<     / __// /  \n");
+    printf("        /_____/_/\\__,_/\\___/_/|_|\\____/\\__,_/\\___/_/|_|   /____/_/\n");
+    printf("\n");
 }
 
-/**
- * 進入一場牌局的場景
- */
+//玩一場牌局的場景
 void playCardScene(){
     /*
      * TODO 將牌局所有要用到的變數在此宣告和初始化
      */
-    int indent = 35;
+    Player player[999]; //曾經建檔過的玩家
     char choice = '?';
 
     //TODO 從檔案載入所有Player資料到陣列
@@ -142,7 +128,7 @@ void playCardScene(){
     //TODO 如果沒找到則append一個元素到Player陣列
 
     clearScreen();
-    printf("%*s%s choice=%c\n\n", indent, " ", "User Info", choice);
+    printf("%35s%s choice=%c\n\n",  " ", "User Info", choice);
     //TODO 顯示Player資料
 
     do{
@@ -153,33 +139,71 @@ void playCardScene(){
             //TODO 發牌
             //TODO 進入遊戲邏輯
             clearScreen();
-            printf("%*s%s\n\n", indent, " ", "PlayCardScene");
-            printf("%*s%s\n", indent, " ", "1) Play again");
-            printf("%*s%s\n", indent, " ", "0) Quit");
-            printf("\n%*s%s", indent, " ", "Choice:");
+            printf("%35s%s\n\n", " ", "PlayCardScene");
+            printf("%35s%s\n", " ", "1) Play again");
+            printf("%35s%s\n", " ", "0) Quit");
+            printf("\n%35s%s", " ", "Choice:");
             break;
         case '?':
-            printf("%*s%s\n", indent, " ", "1) GO");
-            printf("%*s%s\n", indent, " ", "0) Quit");
-            printf("\n%*s%s", indent, " ", "Choice:");
+            printf("%35s%s\n", " ", "1) GO");
+            printf("%35s%s\n", " ", "0) Quit");
+            printf("\n%35s%s", " ", "Choice:");
             break;
         }
 
     }while((choice=getchar())!='0');
 }
 
-/**
- * 清除畫面
- */
+//清除畫面
 void clearScreen(){
     system("cls");
 }
 
-/**
- * 按下任一鍵繼續
- */
+//按下任一鍵繼續
 void pressAnyKeyToContinue(){
     system("pause");
+}
+
+//產生測試用的假玩家
+void makeDummyPlayer(){
+    Player dummyPlayer[999]={0};
+    char* playerId[] = {"david","hank","angus"};
+    int playerNum = sizeof(playerId)/sizeof(*playerId);
+    int i;
+
+    clearScreen();
+
+    for(i=0; i<playerNum; i++){
+        dummyPlayer[i].id = playerId[i];
+        dummyPlayer[i].chip = 10000;
+        dummyPlayer[i].playCount = 0;
+        dummyPlayer[i].winCount = 0;
+        dummyPlayer[i].loseCount = 0;
+        dummyPlayer[i].blackjackCount = 0;
+
+        printf("Dummy Player%d has been created.\n",i);
+    }
+
+    for(i=0; i<999; i++){
+        if(!dummyPlayer[i].id)
+            continue;
+        printf("i=%d id=%s chip=%d play=%d win=%d lose=%d blackjack=%d\n",
+               i,
+               dummyPlayer[i].id,
+               dummyPlayer[i].chip,
+               dummyPlayer[i].playCount,
+               dummyPlayer[i].winCount,
+               dummyPlayer[i].loseCount,
+               dummyPlayer[i].blackjackCount
+               );
+    }
+
+    pressAnyKeyToContinue();
+}
+
+//印出玩家陣列
+void dumpPlayer(){
+
 }
 
 //---------------以下測試用，將來會移除--------------------
