@@ -19,7 +19,12 @@
  * 牌戲的一盤 Hand
  */
 
-#define DECK_NUMBER 1
+#define DECK_NUMBER 1                   //牌堆數量
+#define MAX_PLAYERS_NUMBER 999          //最大玩家資料數
+#define MAX_PLAYER_NAME_SIZE 20         //玩家名稱最大長度
+#define STRING_INDENT 35                //顯示字串縮排
+#define DEFAULT_CHIP 1000               //預設發放籌碼
+#define PLAYERS_DAT_FILE "players.dat"  //玩家資料檔案
 
 //定義花色 (參考課程 ch10 p24)
 enum Suit{
@@ -33,7 +38,7 @@ enum Suit{
 typedef struct{
     int deck;       //第N副牌
     enum Suit suit; //花色
-    char *face;     //牌點
+    char face[2];     //牌點
     int point;      //遊戲點數
     int altPoint;   //可替代的遊戲點數
     int order;      //出牌順序
@@ -42,7 +47,7 @@ typedef struct{
 
 //定義玩家資料型態和玩家屬性 (參考課程 ch10 p15)
 typedef struct{
-    char *id;           //玩家ID
+    char name[MAX_PLAYER_NAME_SIZE];  //玩家名稱
     int chip;           //籌碼
     int playCount;      //玩牌次數
     int winCount;       //贏的次數
@@ -56,10 +61,17 @@ void playCardScene();           //玩一場牌局的場景
 void clearScreen();             //清除畫面
 void pressAnyKeyToContinue();   //按下任一鍵繼續
 
+void inputPlayerName(char* playerName);
+void readPlayerByName(Player* player, char* playerName);
+void savePlayer(Player* player);
+void dumpPlayer(Player* player);
+void dumpPlayers();
+void bubbleSortPlayersByName(Player* players);
+
 //XXXXXXX 測試卡牌渲染(測試用，將來會移除) XXXXXXX
 void testRenderCard(int gap);
 void makeDummyPlayer();
-void dumpDummyPlayer();
+
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 int main(){
@@ -71,7 +83,9 @@ int main(){
     return 0;
 }
 
-//主功能選單
+/**
+ * @brief 主功能選單
+ */
 void mainMenu(){
 
     char choice = '?'; //選單功能選擇
@@ -86,49 +100,91 @@ void mainMenu(){
             makeDummyPlayer();
             break;
         case '3': //XXX 純測試用，將來移除
+            dumpPlayers();
             break;
         }
         clearScreen();
         showWelcome();
 
-        printf("%35s%s\n", " ", "3) Test2");
-        printf("%35s%s\n", " ", "2) makeDummyPlayer");
-        printf("%35s%s\n", " ", "1) Play");
-        printf("%35s%s\n", " ", "0) Quit");
-        printf("\n%35s%s", " ", "Choice:");
+        printf("%*s%s\n", STRING_INDENT, " ", "3) 測試dumpPlayers");
+        printf("%*s%s\n", STRING_INDENT, " ", "2) makeDummyPlayer");
+        printf("%*s%s\n", STRING_INDENT, " ", "1) Play");
+        printf("%*s%s\n", STRING_INDENT, " ", "0) Quit");
+        printf("\n%*s%s", STRING_INDENT, " ", "Choice:");
     }while((choice=getchar())!='0');
 }
 
-//顯示歡迎畫面
-void showWelcome(){
-    //歡迎詞
-    //https://patorjk.com/software/taag/#p=display&f=Slant&t=BlackJack%2021
-    //若字串內容有倒斜線\，則手動將之跳脫(escape) (參考課程 ch09 p24)
-    printf("\n");
-    printf("            ____  __           __       __           __      ___  ___\n");
-    printf("           / __ )/ /___ ______/ /__    / /___ ______/ /__   |__ \\<  /\n");
-    printf("          / __  / / __ `/ ___/ //_/_  / / __ `/ ___/ //_/   __/ // / \n");
-    printf("         / /_/ / / /_/ / /__/ ,< / /_/ / /_/ / /__/ ,<     / __// /  \n");
-    printf("        /_____/_/\\__,_/\\___/_/|_|\\____/\\__,_/\\___/_/|_|   /____/_/\n");
-    printf("\n");
+/**
+ * @brief 輸入玩家名稱
+ * @param playerName
+ * scanf 參考 ch02 p19
+ */
+void inputPlayerName(char* playerName){
+    clearScreen();
+    printf("%*sPlease enter your name:", STRING_INDENT, " ");
+    scanf("%s", playerName);
 }
 
-//玩一場牌局的場景
+/**
+ * @brief 讀取玩家資料
+ * @param playerName
+ */
+void readPlayerByName(Player* player, char* playerName){
+    FILE *fp;
+    errno_t err;
+    Player tmp={0}; //必須初始化struct內的值為 0
+
+    err=fopen_s(&fp,PLAYERS_DAT_FILE,"rb");
+    if(err)
+        return;
+
+    while(!feof(fp)){
+        fread(&tmp, sizeof(Player), 1, fp);
+        if(!strlen(tmp.name))
+            continue;
+        if(strcmp(tmp.name, playerName)!=0)
+            continue;
+        strcpy_s(player->name, sizeof(player->name), tmp.name);
+        player->chip = tmp.chip;
+        player->playCount = tmp.playCount;
+        player->winCount = tmp.winCount;
+        player->loseCount = tmp.loseCount;
+        player->blackjackCount = tmp.blackjackCount;
+        break;
+    }
+    fclose(fp);
+}
+
+/**
+ * @brief 玩一場牌局的場景
+ */
 void playCardScene(){
     /*
-     * TODO 將牌局所有要用到的變數在此宣告和初始化
+     * 將牌局所有要用到的變數在此宣告和初始化
      */
-    Player player[999]; //曾經建檔過的玩家
     char choice = '?';
+    char playerName[MAX_PLAYER_NAME_SIZE]={0};
+    Player player={0};
 
-    //TODO 從檔案載入所有Player資料到陣列
-    //TODO 要求使用者輸入帳號
-    //TODO 從Player陣列裏搜尋帳號資料 (此處要用到二元搜尋法)
-    //TODO 如果找到帳號資料則 assign 到變數
-    //TODO 如果沒找到則append一個元素到Player陣列
+    //要求使用者輸入玩家名稱
+    inputPlayerName(playerName);
+    //以玩家名稱讀取玩家資料
+    readPlayerByName(&player, playerName);
+    //初始化新玩家
+    if(!strlen(player.name)){
+        strcpy_s(player.name, sizeof(player.name), playerName);
+        player.chip = DEFAULT_CHIP;
+        player.playCount = 0;
+        player.winCount = 0;
+        player.loseCount = 0;
+        player.blackjackCount = 0;
+        savePlayer(&player);
+    }
 
     clearScreen();
-    printf("%35s%s choice=%c\n\n",  " ", "User Info", choice);
+
+    dumpPlayer(&player);
+    printf("%*s%s choice=%c\n\n", STRING_INDENT, " ", "User Info", choice);
     //TODO 顯示Player資料
 
     do{
@@ -139,71 +195,228 @@ void playCardScene(){
             //TODO 發牌
             //TODO 進入遊戲邏輯
             clearScreen();
-            printf("%35s%s\n\n", " ", "PlayCardScene");
-            printf("%35s%s\n", " ", "1) Play again");
-            printf("%35s%s\n", " ", "0) Quit");
-            printf("\n%35s%s", " ", "Choice:");
+            printf("%*s%s\n\n", STRING_INDENT, " ", "PlayCardScene");
+            printf("%*s%s\n", STRING_INDENT, " ", "1) Play again");
+            printf("%*s%s\n", STRING_INDENT, " ", "0) Quit");
+            printf("\n%*s%s", STRING_INDENT, " ", "Choice:");
             break;
         case '?':
-            printf("%35s%s\n", " ", "1) GO");
-            printf("%35s%s\n", " ", "0) Quit");
-            printf("\n%35s%s", " ", "Choice:");
+            printf("%*s%s\n", STRING_INDENT, " ", "1) GO");
+            printf("%*s%s\n", STRING_INDENT, " ", "0) Quit");
+            printf("\n%*s%s", STRING_INDENT, " ", "Choice:");
             break;
         }
 
     }while((choice=getchar())!='0');
 }
 
-//清除畫面
+/**
+ * @brief 清除畫面
+ */
 void clearScreen(){
     system("cls");
 }
 
-//按下任一鍵繼續
+/**
+ * @brief 按下任一鍵繼續
+ */
 void pressAnyKeyToContinue(){
     system("pause");
 }
 
-//產生測試用的假玩家
+/**
+ * @brief 顯示歡迎畫面
+ */
+void showWelcome(){
+    //歡迎詞
+    char *welcome[] = {
+        "",
+        "            ____  __           __       __           __      ___  ___",
+        "           / __ )/ /___ ______/ /__    / /___ ______/ /__   |__ \\<  /",
+        "          / __  / / __ `/ ___/ //_/_  / / __ `/ ___/ //_/   __/ // / ",
+        "         / /_/ / / /_/ / /__/ ,< / /_/ / /_/ / /__/ ,<     / __// /  ",
+        "        /_____/_/\\__,_/\\___/_/|_|\\____/\\__,_/\\___/_/|_|   /____/_/",
+        "",
+    };
+
+    //計算陣列字串的個數 (2D陣列所佔bytes/每個陣列元素所佔bytes)
+    int lineCount = sizeof(welcome)/sizeof(*welcome);
+    int i;
+
+    //逐行印出
+    for(i=0; i<lineCount; i++)
+        printf("%s\n",*(welcome+i));
+}
+
+/**
+ * @brief 產生測試用的假玩家
+ */
 void makeDummyPlayer(){
-    Player dummyPlayer[999]={0};
-    char* playerId[] = {"david","hank","angus"};
-    int playerNum = sizeof(playerId)/sizeof(*playerId);
+    Player dummyPlayers[MAX_PLAYERS_NUMBER]={0};
+    char* playerName[] = {"david","hank","angus"};
+    int playerNum = sizeof(playerName)/sizeof(*playerName);
     int i;
 
     clearScreen();
 
     for(i=0; i<playerNum; i++){
-        dummyPlayer[i].id = playerId[i];
-        dummyPlayer[i].chip = 10000;
-        dummyPlayer[i].playCount = 0;
-        dummyPlayer[i].winCount = 0;
-        dummyPlayer[i].loseCount = 0;
-        dummyPlayer[i].blackjackCount = 0;
+        strcpy_s(dummyPlayers[i].name, sizeof(dummyPlayers[i].name), playerName[i]);
+        dummyPlayers[i].chip = 10000;
+        dummyPlayers[i].playCount = 0;
+        dummyPlayers[i].winCount = 0;
+        dummyPlayers[i].loseCount = 0;
+        dummyPlayers[i].blackjackCount = 0;
 
-        printf("Dummy Player%d has been created.\n",i);
+        printf("Dummy Player%d %s has been created.\n",i, dummyPlayers[i].name);
     }
 
-    for(i=0; i<999; i++){
-        if(!dummyPlayer[i].id)
+    bubbleSortPlayersByName(dummyPlayers);
+
+    for(i=0; i<MAX_PLAYERS_NUMBER; i++){
+        if(!strlen(dummyPlayers[i].name))
             continue;
-        printf("i=%d id=%s chip=%d play=%d win=%d lose=%d blackjack=%d\n",
-               i,
-               dummyPlayer[i].id,
-               dummyPlayer[i].chip,
-               dummyPlayer[i].playCount,
-               dummyPlayer[i].winCount,
-               dummyPlayer[i].loseCount,
-               dummyPlayer[i].blackjackCount
+        printf("name=%s chip=%d play=%d win=%d lose=%d blackjack=%d\n",
+               dummyPlayers[i].name,
+               dummyPlayers[i].chip,
+               dummyPlayers[i].playCount,
+               dummyPlayers[i].winCount,
+               dummyPlayers[i].loseCount,
+               dummyPlayers[i].blackjackCount
                );
     }
 
     pressAnyKeyToContinue();
 }
 
-//印出玩家陣列
-void dumpPlayer(){
+/**
+ * @brief 將玩家陣列以汽泡排序法排列
+ * @param players
+ * (參考課程 ch06 p42)
+ */
+void bubbleSortPlayersByName(Player *players){
+    int loop;
+    int ptrIdx;
+    int playersSize=0;
+    int i;
+    Player hold;
 
+    for(i=0;i<MAX_PLAYERS_NUMBER;i++){
+        if(!strlen((players+i)->name))
+            break;
+        playersSize++;
+    }
+
+    for(loop=1; loop<playersSize; loop++){
+        for(ptrIdx=0; ptrIdx<playersSize-1; ptrIdx++){
+            //如果前者的name > 後者的name，則兩者互相交換
+            Player *former = players+ptrIdx;
+            Player *latter = players+ptrIdx+1;
+            if(strcmp(former->name, latter->name)>0){ //字串比較 (參考課程 ch08 p40)
+                //暫存前者資料
+                strcpy_s(hold.name, sizeof(hold.name), former->name);
+                hold.chip = former->chip;
+                hold.playCount = former->playCount;
+                hold.winCount = former->winCount;
+                hold.loseCount = former->loseCount;
+                hold.blackjackCount = former->blackjackCount;
+                //後者資料assign給前者
+                strcpy_s(former->name, sizeof(former->name), latter->name);
+                former->chip = latter->chip;
+                former->playCount = latter->playCount;
+                former->winCount = latter->winCount;
+                former->loseCount = latter->loseCount;
+                former->blackjackCount = latter->blackjackCount;
+                //暫存資料assign給後者
+                strcpy_s(latter->name, sizeof(latter->name), hold.name);
+                latter->chip = hold.chip;
+                latter->playCount = hold.playCount;
+                latter->winCount = hold.winCount;
+                latter->loseCount = hold.loseCount;
+                latter->blackjackCount = hold.blackjackCount;
+            }
+        }
+    }
+}
+
+/**
+ * @brief 將玩家資料儲存到檔案
+ * @param player
+ */
+void savePlayer(Player* player){
+    if(!strlen(player->name))
+        return;
+
+    FILE *fp;
+    errno_t err;
+    Player tmp={0}; //必須初始化struct內的值為 0
+    int playerIndexInFile = -1;
+
+    err=fopen_s(&fp,PLAYERS_DAT_FILE,"a+b");
+    if(err)
+        return;
+
+    while(!feof(fp)){
+        fread(&tmp, sizeof(Player), 1, fp);
+
+        playerIndexInFile++;
+
+        if(!strlen(tmp.name))
+            continue;
+        if(strcmp(tmp.name, player->name)==0)
+            break;
+    }
+    fseek(fp, playerIndexInFile*sizeof(Player), SEEK_SET);
+    fwrite(player, sizeof(Player), 1, fp);
+    fclose(fp);
+}
+
+/**
+ * @brief 印出玩家資料
+ */
+void dumpPlayer(Player* player){
+    if(!strlen(player->name))
+        return;
+
+    printf("Player name=%s chip=%d play=%d win=%d lose=%d blackjack=%d\n",
+           player->name,
+           player->chip,
+           player->playCount,
+           player->winCount,
+           player->loseCount,
+           player->blackjackCount
+           );
+}
+
+/**
+ * @brief 列出所有玩家資料
+ */
+void dumpPlayers(){
+    FILE *fp;
+    errno_t err;
+    Player tmp={0}; //必須初始化struct內的值為 0
+    int playerIndexInFile = -1;
+
+    err=fopen_s(&fp,PLAYERS_DAT_FILE,"rb");
+    if(err)
+        return;
+
+    clearScreen();
+
+    fseek(fp, 0*sizeof(Player), SEEK_SET);
+    while(!feof(fp)){
+        fread(&tmp, sizeof(Player), 1, fp);
+
+        if(!strlen(tmp.name))
+            continue;
+
+        playerIndexInFile++;
+        printf("[%d] ", playerIndexInFile);
+        dumpPlayer(&tmp);
+        memset(tmp.name, 0, sizeof(tmp.name));
+    }
+    fclose(fp);
+
+    pressAnyKeyToContinue();
 }
 
 //---------------以下測試用，將來會移除--------------------
