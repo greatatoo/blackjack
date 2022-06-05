@@ -20,6 +20,7 @@
  */
 
 #define DECK_NUMBER 1                   //牌堆數量
+#define CARD_NUMBER 52                  //一副牌有52張
 #define MAX_PLAYERS_NUMBER 999          //最大玩家資料數
 #define MAX_PLAYER_NAME_SIZE 20         //玩家名稱最大長度
 #define STRING_INDENT 35                //顯示字串縮排
@@ -27,6 +28,9 @@
 #define FIELD_VALUE_WIDTH 20            //欄位Value寛度
 #define DEFAULT_CHIP 1000               //預設發放籌碼
 #define PLAYERS_DAT_FILE "players.dat"  //玩家資料檔案
+#define MAX_SPLIT_NUMBER 4*DECK_NUMBER  //最大分牌數量
+#define MAX_DEAL_NUMBER 5               //最大發牌數量
+#define DEFAULT_BET 50                  //預設下注額
 
 //定義花色 (參考課程 ch10 p24)
 enum Suit{
@@ -40,12 +44,24 @@ enum Suit{
 typedef struct{
     int deck;       //第N副牌
     enum Suit suit; //花色
-    char face[2];     //牌點
+    char face[3];   //牌點
     int point;      //遊戲點數
     int altPoint;   //可替代的遊戲點數
     int order;      //出牌順序
     int appeared;   //出現次數
 } Card;
+
+//定義牌局資料型態和牌局屬性 (參考課程 ch10 p15)
+typedef struct{
+    int game[MAX_DEAL_NUMBER]; //手牌
+    boolean banker; //是否為莊家
+    boolean insurance; //保險
+    boolean doubleDown; //雙倍下注
+    boolean surrender; //投降
+    boolean stand;     //停牌
+    boolean bust;      //爆牌
+    int bet; //下注
+} Hand;
 
 //定義玩家資料型態和玩家屬性 (參考課程 ch10 p15)
 typedef struct{
@@ -57,24 +73,41 @@ typedef struct{
     int blackjackCount; //拿到黑傑克的次數
 } Player;
 
-void mainMenu();                //主功能選單
-void showWelcome();             //顯示歡迎詞
-void playCardScene();           //玩一場牌局的場景
-void clearScreen();             //清除畫面
-void pressAnyKeyToContinue();   //按下任一鍵繼續
-
-void inputPlayerName(char* playerName);
-void readPlayerByName(Player* player, char* playerName);
-void savePlayer(Player* player);
-void printPlayer(Player* player);
-void dumpPlayer(Player* player);
-void dumpPlayers();
-void bubbleSortPlayersByName(Player* players);
-
-//XXXXXXX 測試卡牌渲染(測試用，將來會移除) XXXXXXX
-void testRenderCard(int gap);
-void makeDummyPlayer();
-//XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+// +----------------------------------------+
+// |                選單場景
+// +----------------------------------------+
+void mainMenu(); //主功能選單
+void playCardScene(); //玩一場牌局的場景
+void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands); //黑傑克邏輯
+// +----------------------------------------+
+// |                資料處理
+// +----------------------------------------+
+void inputPlayerName(char* playerName); //輸入玩家名稱
+void readPlayerByName(Player* player, char* playerName); //讀取玩家資料
+void savePlayer(Player* player); //將玩家資料儲存到檔案
+void initHands(Hand* hands, boolean isBanker); //初始化手牌
+void initCards(Card* cards); //初始化牌堆
+void shuffleCards(Card* cards); //洗牌
+void dealCard(int* nextCardIndex, Hand* playerHands); //發牌給玩家或莊家
+// +----------------------------------------+
+// |                資料渲染
+// +----------------------------------------+
+void showWelcome(); //顯示歡迎畫面
+void printPlayer(Player* player); //印出玩家資料
+// +----------------------------------------+
+// |                輔助功能
+// +----------------------------------------+
+void clearScreen(); //清除畫面
+void pressAnyKeyToContinue(); //按下任一鍵繼續
+void dumpPlayer(Player* player); //傾倒玩家資料
+void dumpPlayers(); //列出所有玩家資料
+void dumpCards(Card* cards); //列出卡牌
+void dumpHands(Hand* hands, Card* cards); //列出手牌
+// +----------------------------------------+
+// |                測試
+// +----------------------------------------+
+void testRenderCard(int gap); //測試卡牌渲染
+void makeDummyPlayer(); //產生測試用的假玩家
 
 int main(){
 
@@ -128,10 +161,13 @@ void playCardScene(){
     /*
      * 將牌局所有要用到的變數在此宣告和初始化
      */
-    int indent = 0;
-    char choice = '?';
-    char playerName[MAX_PLAYER_NAME_SIZE] = {0};
-    Player player = {0};
+    int indent = 0; //字串縮排
+    char choice = '?'; //選單號碼
+    char playerName[MAX_PLAYER_NAME_SIZE] = {0}; //玩家名稱
+    Player player = {0}; //玩家資料
+    Card cards[DECK_NUMBER*CARD_NUMBER] = {0}; //牌堆
+    Hand bankerHands[MAX_SPLIT_NUMBER] = {0}; //莊家手牌
+    Hand playerHands[MAX_SPLIT_NUMBER] = {0}; //玩家手牌
 
     //要求使用者輸入玩家名稱
     inputPlayerName(playerName);
@@ -156,11 +192,18 @@ void playCardScene(){
     do{
         switch(choice){
         case '1':
-            //TODO 初始牌堆
-            //TODO 洗牌
-            //TODO 發牌
-            //TODO 進入遊戲邏輯
+            //初始手牌
+            initHands(bankerHands, TRUE);
+            initHands(playerHands, FALSE);
+            //初始牌堆
+            initCards(cards);
+            //洗牌
+            shuffleCards(cards);
+            //黑傑克邏輯
+            blackjackLogic(cards, bankerHands, playerHands);
+
             clearScreen();
+
             indent = STRING_INDENT-13/2; //13來自下列字串的最大長度13個字
             printf("%*s%s\n\n", indent, " ", "PlayCardScene");
             printf("%*s%s\n", indent, " ", "1) Play again");
@@ -176,6 +219,32 @@ void playCardScene(){
         }
 
     }while((choice=getchar())!='0');
+}
+
+/**
+ * @brief 黑傑克遊戲邏輯
+ */
+void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
+    int nextCardIndex = 0;
+    int i,j;
+    Hand* hand;
+
+    clearScreen();
+
+    //向莊家發一張牌
+    dealCard(&nextCardIndex, bankerHands);
+    dealCard(&nextCardIndex, bankerHands);
+    dealCard(&nextCardIndex, bankerHands);
+    dumpHands(bankerHands, cards);
+    //向玩家發一張牌
+    dealCard(&nextCardIndex, playerHands);
+    dealCard(&nextCardIndex, playerHands);
+    dealCard(&nextCardIndex, playerHands);
+    dumpHands(playerHands, cards);
+
+    dumpCards(cards);
+
+    pressAnyKeyToContinue();
 }
 
 // +----------------------------------------+
@@ -255,6 +324,136 @@ void savePlayer(Player* player){
     fclose(fp);
 }
 
+/**
+ * @brief 初始化手牌
+ * @param hands
+ */
+void initHands(Hand* hands, boolean isBanker){
+    int i,j;
+    Hand* hand;
+
+    for(i=0; i<MAX_SPLIT_NUMBER; i++){
+        hand = hands+i;
+        for(j=0; j<MAX_DEAL_NUMBER; j++)
+            *(hand->game+j)=-1;
+        hand->banker = isBanker;
+        hand->insurance = FALSE;
+        hand->doubleDown = FALSE;
+        hand->surrender = FALSE;
+        hand->stand = FALSE;
+        hand->bust = FALSE;
+        hand->bet = i==0? DEFAULT_BET:0;
+    }
+}
+
+/**
+ * @brief 初始化牌堆
+ */
+void initCards(Card* cards){
+    int i,j;
+    Card* card;
+
+    for(i=0; i<DECK_NUMBER; i++){
+        for(j=0; j<CARD_NUMBER; j++){
+            card = cards+i*CARD_NUMBER+j;
+            card->deck = i;
+            card->suit = j/13;
+            switch(j%13){
+            case 0:
+                strcpy_s(card->face, sizeof(card->face), "A");
+                card->point = 1;
+                card->altPoint = 11;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 1:
+                strcpy_s(card->face, sizeof(card->face), "2");
+                card->point = 2;
+                card->altPoint = 2;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 2:
+                strcpy_s(card->face, sizeof(card->face), "3");
+                card->point = 3;
+                card->altPoint = 3;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 3:
+                strcpy_s(card->face, sizeof(card->face), "4");
+                card->point = 4;
+                card->altPoint = 4;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 4:
+                strcpy_s(card->face, sizeof(card->face), "5");
+                card->point = 5;
+                card->altPoint = 5;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 5:
+                strcpy_s(card->face, sizeof(card->face), "6");
+                card->point = 6;
+                card->altPoint = 6;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 6:
+                strcpy_s(card->face, sizeof(card->face), "7");
+                card->point = 7;
+                card->altPoint = 7;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 7:
+                strcpy_s(card->face, sizeof(card->face), "8");
+                card->point = 8;
+                card->altPoint = 8;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 8:
+                strcpy_s(card->face, sizeof(card->face), "9");
+                card->point = 9;
+                card->altPoint = 9;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 9:
+                strcpy_s(card->face, sizeof(card->face), "10");
+                card->point = 10;
+                card->altPoint = 10;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 10:
+                strcpy_s(card->face, sizeof(card->face), "J");
+                card->point = 10;
+                card->altPoint = 10;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 11:
+                strcpy_s(card->face, sizeof(card->face), "Q");
+                card->point = 10;
+                card->altPoint = 10;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            case 12:
+                strcpy_s(card->face, sizeof(card->face), "K");
+                card->point = 10;
+                card->altPoint = 10;
+                card->order = rand();
+                card->appeared = 0;
+                break;
+            }
+        }
+    }
+}
 
 // +----------------------------------------+
 // |                資料渲染
@@ -372,53 +571,195 @@ void dumpPlayers(){
 }
 
 /**
- * @brief 將玩家陣列以汽泡排序法排列
- * @param players
- * (參考課程 ch06 p42)
+ * @brief 傾倒牌堆卡牌
+ * @param cards
  */
-void bubbleSortPlayersByName(Player *players){
-    int loop;
-    int ptrIdx;
-    int playersSize=0;
-    int i;
-    Player hold;
+void dumpCards(Card* cards){
+    int i,j,ascii;
+    Card* card;
 
-    for(i=0;i<MAX_PLAYERS_NUMBER;i++){
-        if(!strlen((players+i)->name))
-            break;
-        playersSize++;
+    clearScreen();
+
+    for(i=0; i<DECK_NUMBER; i++){
+        for(j=0; j<CARD_NUMBER; j++){
+            card = cards+i*CARD_NUMBER+j;
+            switch(card->suit){
+            case SPADE:
+                ascii = 6;
+                break;
+            case HEART:
+                ascii = 3;
+                break;
+            case DIAMOND:
+                ascii = 4;
+                break;
+            case CLUB:
+                ascii = 5;
+                break;
+            }
+
+            printf("card#%03d deck=%2d suit=%c face=%2s point=%2d,%2d order=%5d appeared=%3d\n",
+                   i*CARD_NUMBER+j,
+                   card->deck,
+                   ascii,
+                   card->face,
+                   card->point,
+                   card->altPoint,
+                   card->order,
+                   card->appeared
+                   );
+        }
     }
 
-    for(loop=1; loop<playersSize; loop++){
-        for(ptrIdx=0; ptrIdx<playersSize-1; ptrIdx++){
-            //如果前者的name > 後者的name，則兩者互相交換
-            Player *former = players+ptrIdx;
-            Player *latter = players+ptrIdx+1;
-            if(strcmp(former->name, latter->name)>0){ //字串比較 (參考課程 ch08 p40)
+    pressAnyKeyToContinue();
+}
+
+/**
+ * @brief 列出手牌
+ * @param hands
+ */
+void dumpHands(Hand* hands, Card* cards){
+    int i,j,k,ascii;
+    Hand* hand;
+
+    clearScreen();
+
+    for(i=0; i<MAX_SPLIT_NUMBER; i++){
+        hand = hands+i;
+
+        printf("%s hand#%2d bet=%d insurance=%s double=%s surrender=%s stand=%s bust=%s",
+               (hand->banker?"Banker":"Player"),
+               i,
+               hand->bet,
+               hand->insurance?"O":"X",
+               hand->doubleDown?"O":"X",
+               hand->surrender?"O":"X",
+               hand->stand?"O":"X",
+               hand->bust?"O":"X"
+               );
+
+        printf(" card=[");
+        for(j=0; j<MAX_DEAL_NUMBER; j++){
+            if(j==0)
+                printf("%d",*(hand->game+j));
+            else
+                printf(",%d",*(hand->game+j));
+        }
+        printf("]\n");
+
+        printf(" card=[");
+        for(j=0; j<MAX_DEAL_NUMBER; j++){
+            k = *(hand->game+j);
+            if(k<0)
+                continue;
+            switch((cards+k)->suit){
+            case SPADE:
+                ascii = 6;
+                break;
+            case HEART:
+                ascii = 3;
+                break;
+            case DIAMOND:
+                ascii = 4;
+                break;
+            case CLUB:
+                ascii = 5;
+                break;
+            }
+            if(j==0)
+                printf("%c%s",ascii, (cards+k)->face);
+            else
+                printf(",%c%s",ascii, (cards+k)->face);
+        }
+        printf("]\n");
+    }
+
+    pressAnyKeyToContinue();
+}
+
+/**
+ * @brief 洗牌
+ * @param cards
+ */
+void shuffleCards(Card* cards){
+    int loop, ptrIdx;
+    int total = DECK_NUMBER*CARD_NUMBER;
+    Card hold;
+
+    for(loop=1; loop<total; loop++){
+        for(ptrIdx=0; ptrIdx<total-1; ptrIdx++){
+            //如果前者的order > 後者的order，則兩者互相交換
+            Card *former = cards+ptrIdx;
+            Card *latter = cards+ptrIdx+1;
+            if(former->order > latter->order){
                 //暫存前者資料
-                strcpy_s(hold.name, sizeof(hold.name), former->name);
-                hold.chip = former->chip;
-                hold.playCount = former->playCount;
-                hold.winCount = former->winCount;
-                hold.loseCount = former->loseCount;
-                hold.blackjackCount = former->blackjackCount;
+                hold.deck = former->deck;
+                hold.suit = former->suit;
+                strcpy_s(hold.face, sizeof(hold.face), former->face);
+                hold.point = former->point;
+                hold.altPoint = former->altPoint;
+                hold.order = former->order;
+                hold.appeared = former->appeared;
                 //後者資料assign給前者
-                strcpy_s(former->name, sizeof(former->name), latter->name);
-                former->chip = latter->chip;
-                former->playCount = latter->playCount;
-                former->winCount = latter->winCount;
-                former->loseCount = latter->loseCount;
-                former->blackjackCount = latter->blackjackCount;
+                former->deck = latter->deck;
+                former->suit = latter->suit;
+                strcpy_s(former->face, sizeof(former->face), latter->face);
+                former->point = latter->point;
+                former->altPoint = latter->altPoint;
+                former->order = latter->order;
+                former->appeared = latter->appeared;
                 //暫存資料assign給後者
-                strcpy_s(latter->name, sizeof(latter->name), hold.name);
-                latter->chip = hold.chip;
-                latter->playCount = hold.playCount;
-                latter->winCount = hold.winCount;
-                latter->loseCount = hold.loseCount;
-                latter->blackjackCount = hold.blackjackCount;
+                latter->deck = hold.deck;
+                latter->suit = hold.suit;
+                strcpy_s(latter->face, sizeof(latter->face), hold.face);
+                latter->point = hold.point;
+                latter->altPoint = hold.altPoint;
+                latter->order = hold.order;
+                latter->appeared = hold.appeared;
             }
         }
     }
+}
+
+/**
+ * @brief 發牌
+ * @param nextCardIndex 目前已發牌的index
+ * @param playerHands 玩家手牌
+ */
+void dealCard(int* nextCardIndex, Hand* playerHands){
+    int i,j;
+    boolean isDeal = FALSE;
+    Hand* hand;
+
+    for(i=0; i<MAX_SPLIT_NUMBER; i++){
+        hand = playerHands+i;
+
+        //跳過沒下注的
+        if(!hand->bet)
+            continue;
+        //已停牌的
+        if(hand->stand)
+            continue;
+        //已爆牌的
+        if(hand->bust)
+            continue;
+
+        for(j=0; j<MAX_DEAL_NUMBER; j++){
+            if(*(hand->game+j)==-1){ // -1代表尚未被發牌
+                *(hand->game+j) = *nextCardIndex;
+                //發牌後，將下一張牌的index++
+                (*nextCardIndex)++;
+                isDeal = TRUE;
+                break;
+            }
+        }
+
+        if(isDeal){
+            //TODO 計算點數，依點數更新其它狀態如 bust
+            break;
+        }
+    }
+
 }
 
 // +----------------------------------------+
@@ -472,8 +813,6 @@ void makeDummyPlayer(){
 
         printf("Dummy Player%d %s has been created.\n",i, dummyPlayers[i].name);
     }
-
-    bubbleSortPlayersByName(dummyPlayers);
 
     for(i=0; i<MAX_PLAYERS_NUMBER; i++){
         if(!strlen(dummyPlayers[i].name))
