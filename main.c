@@ -17,6 +17,12 @@
  * 投降 Surrender
  * 停牌 Stand
  * 牌戲的一盤 Hand
+ * 179 = │
+ * 191 = ┐
+ * 192 = └
+ * 196 = ─
+ * 217 = ┘
+ * 218 = ┌
  */
 
 #define DECK_NUMBER 1                   //牌堆數量
@@ -88,7 +94,7 @@ void savePlayer(Player* player); //將玩家資料儲存到檔案
 void initHands(Hand* hands, boolean isBanker); //初始化手牌
 void initCards(Card* cards); //初始化牌堆
 void shuffleCards(Card* cards); //洗牌
-void dealCard(int* nextCardIndex, Hand* playerHands); //發牌給玩家或莊家
+void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards); //發牌給玩家或莊家
 // +----------------------------------------+
 // |                資料渲染
 // +----------------------------------------+
@@ -102,7 +108,9 @@ void pressAnyKeyToContinue(); //按下任一鍵繼續
 void dumpPlayer(Player* player); //傾倒玩家資料
 void dumpPlayers(); //列出所有玩家資料
 void dumpCards(Card* cards); //列出卡牌
-void dumpHands(Hand* hands, Card* cards); //列出手牌
+void printHand(Hand* hand, Card* cards); //印出手牌(無清除畫面，無暫停)
+void dumpHand(Hand* hand, Card* cards); //列出手牌
+void dumpHands(Hand* hands, Card* cards); //列出手牌陣列
 // +----------------------------------------+
 // |                測試
 // +----------------------------------------+
@@ -232,14 +240,14 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
     clearScreen();
 
     //向莊家發一張牌
-    dealCard(&nextCardIndex, bankerHands);
-    dealCard(&nextCardIndex, bankerHands);
-    dealCard(&nextCardIndex, bankerHands);
+    dealCard(&nextCardIndex, bankerHands, cards);
+    dealCard(&nextCardIndex, bankerHands, cards);
+    dealCard(&nextCardIndex, bankerHands, cards);
     dumpHands(bankerHands, cards);
     //向玩家發一張牌
-    dealCard(&nextCardIndex, playerHands);
-    dealCard(&nextCardIndex, playerHands);
-    dealCard(&nextCardIndex, playerHands);
+    dealCard(&nextCardIndex, playerHands, cards);
+    dealCard(&nextCardIndex, playerHands, cards);
+    dealCard(&nextCardIndex, playerHands, cards);
     dumpHands(playerHands, cards);
 
     dumpCards(cards);
@@ -614,66 +622,70 @@ void dumpCards(Card* cards){
     pressAnyKeyToContinue();
 }
 
+void printHand(Hand* hand, Card* cards){
+    int j,k,ascii;
+
+    printf("%s hand bet=%d insurance=%s double=%s surrender=%s stand=%s bust=%s",
+           (hand->banker?"Banker":"Player"),
+           hand->bet,
+           hand->insurance?"O":"X",
+           hand->doubleDown?"O":"X",
+           hand->surrender?"O":"X",
+           hand->stand?"O":"X",
+           hand->bust?"O":"X"
+           );
+
+    printf(" card=[");
+    for(j=0; j<MAX_DEAL_NUMBER; j++){
+        if(j==0)
+            printf("%d",*(hand->game+j));
+        else
+            printf(",%d",*(hand->game+j));
+    }
+    printf("]");
+
+    printf(" card=[");
+    for(j=0; j<MAX_DEAL_NUMBER; j++){
+        k = *(hand->game+j);
+        if(k<0)
+            continue;
+        switch((cards+k)->suit){
+        case SPADE:
+            ascii = 6;
+            break;
+        case HEART:
+            ascii = 3;
+            break;
+        case DIAMOND:
+            ascii = 4;
+            break;
+        case CLUB:
+            ascii = 5;
+            break;
+        }
+        if(j==0)
+            printf("%c %s",ascii, (cards+k)->face);
+        else
+            printf(",%c %s",ascii, (cards+k)->face);
+    }
+    printf("]\n");
+}
+
+void dumpHand(Hand* hand, Card* cards){
+    clearScreen();
+    printHand(hand, cards);
+    pressAnyKeyToContinue();
+}
+
 /**
  * @brief 列出手牌
  * @param hands
  */
 void dumpHands(Hand* hands, Card* cards){
-    int i,j,k,ascii;
-    Hand* hand;
-
+    int i;
     clearScreen();
-
-    for(i=0; i<MAX_SPLIT_NUMBER; i++){
-        hand = hands+i;
-
-        printf("%s hand#%2d bet=%d insurance=%s double=%s surrender=%s stand=%s bust=%s",
-               (hand->banker?"Banker":"Player"),
-               i,
-               hand->bet,
-               hand->insurance?"O":"X",
-               hand->doubleDown?"O":"X",
-               hand->surrender?"O":"X",
-               hand->stand?"O":"X",
-               hand->bust?"O":"X"
-               );
-
-        printf(" card=[");
-        for(j=0; j<MAX_DEAL_NUMBER; j++){
-            if(j==0)
-                printf("%d",*(hand->game+j));
-            else
-                printf(",%d",*(hand->game+j));
-        }
-        printf("]\n");
-
-        printf(" card=[");
-        for(j=0; j<MAX_DEAL_NUMBER; j++){
-            k = *(hand->game+j);
-            if(k<0)
-                continue;
-            switch((cards+k)->suit){
-            case SPADE:
-                ascii = 6;
-                break;
-            case HEART:
-                ascii = 3;
-                break;
-            case DIAMOND:
-                ascii = 4;
-                break;
-            case CLUB:
-                ascii = 5;
-                break;
-            }
-            if(j==0)
-                printf("%c%s",ascii, (cards+k)->face);
-            else
-                printf(",%c%s",ascii, (cards+k)->face);
-        }
-        printf("]\n");
-    }
-
+    for(i=0; i<MAX_SPLIT_NUMBER; i++)
+        printHand(hands+i, cards);
     pressAnyKeyToContinue();
 }
 
@@ -726,7 +738,7 @@ void shuffleCards(Card* cards){
  * @param nextCardIndex 目前已發牌的index
  * @param playerHands 玩家手牌
  */
-void dealCard(int* nextCardIndex, Hand* playerHands){
+void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
     int i,j;
     boolean isDeal = FALSE;
     Hand* hand;
@@ -756,6 +768,8 @@ void dealCard(int* nextCardIndex, Hand* playerHands){
 
         if(isDeal){
             //TODO 計算點數，依點數更新其它狀態如 bust
+            dumpHand(hand, cards);
+
             break;
         }
     }
