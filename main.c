@@ -36,6 +36,7 @@
 #define PLAYERS_DAT_FILE "players.dat"  //玩家資料檔案
 #define MAX_SPLIT_NUMBER 4*DECK_NUMBER  //最大分牌數量
 #define MAX_DEAL_NUMBER 5               //最大發牌數量
+#define CARD_POINT_POSSIBILITY 2        //卡牌點數的可能數
 #define DEFAULT_BET 50                  //預設下注額
 
 //定義花色 (參考課程 ch10 p24)
@@ -59,7 +60,7 @@ typedef struct{
 
 //定義牌局資料型態和牌局屬性 (參考課程 ch10 p15)
 typedef struct{
-    int game[MAX_DEAL_NUMBER]; //手牌
+    int card[MAX_DEAL_NUMBER]; //手牌
     boolean banker; //是否為莊家
     boolean insurance; //保險
     boolean doubleDown; //雙倍下注
@@ -95,6 +96,8 @@ void initHands(Hand* hands, boolean isBanker); //初始化手牌
 void initCards(Card* cards); //初始化牌堆
 void shuffleCards(Card* cards); //洗牌
 void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards); //發牌給玩家或莊家
+void computeHand(Hand* hand, Card* cards, int* highPoint, int* lowPoint); //計算手牌點數並更新狀態
+void getHighLowPoints(int* arr, int* highPoint, int* lowPoint); //取得手牌組合點數的最大值和最小值
 // +----------------------------------------+
 // |                資料渲染
 // +----------------------------------------+
@@ -343,7 +346,7 @@ void initHands(Hand* hands, boolean isBanker){
     for(i=0; i<MAX_SPLIT_NUMBER; i++){
         hand = hands+i;
         for(j=0; j<MAX_DEAL_NUMBER; j++)
-            *(hand->game+j)=-1;
+            *(hand->card+j)=-1;
         hand->banker = isBanker;
         hand->insurance = FALSE;
         hand->doubleDown = FALSE;
@@ -638,15 +641,15 @@ void printHand(Hand* hand, Card* cards){
     printf(" card=[");
     for(j=0; j<MAX_DEAL_NUMBER; j++){
         if(j==0)
-            printf("%d",*(hand->game+j));
+            printf("%d",*(hand->card+j));
         else
-            printf(",%d",*(hand->game+j));
+            printf(",%d",*(hand->card+j));
     }
     printf("]");
 
     printf(" card=[");
     for(j=0; j<MAX_DEAL_NUMBER; j++){
-        k = *(hand->game+j);
+        k = *(hand->card+j);
         if(k<0)
             continue;
         switch((cards+k)->suit){
@@ -740,6 +743,8 @@ void shuffleCards(Card* cards){
  */
 void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
     int i,j;
+    int highPoint;
+    int lowPoint;
     boolean isDeal = FALSE;
     Hand* hand;
 
@@ -757,8 +762,8 @@ void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
             continue;
 
         for(j=0; j<MAX_DEAL_NUMBER; j++){
-            if(*(hand->game+j)==-1){ // -1代表尚未被發牌
-                *(hand->game+j) = *nextCardIndex;
+            if(*(hand->card+j)==-1){ // -1代表尚未被發牌
+                *(hand->card+j) = *nextCardIndex;
                 //發牌後，將下一張牌的index++
                 (*nextCardIndex)++;
                 isDeal = TRUE;
@@ -768,12 +773,76 @@ void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
 
         if(isDeal){
             //TODO 計算點數，依點數更新其它狀態如 bust
+            highPoint=0;
+            lowPoint=0;
+            computeHand(hand, cards, &highPoint, &lowPoint);
+
             dumpHand(hand, cards);
 
             break;
         }
     }
+}
 
+/**
+ * @brief 計算手牌點數並更新狀態
+ * @param hand
+ * @param cards
+ */
+void computeHand(Hand* hand, Card* cards, int* highPoint, int* lowPoint){
+    int i,cardIdx,high,low;
+    Card* card;
+    int points[MAX_DEAL_NUMBER][CARD_POINT_POSSIBILITY]={0};
+
+    clearScreen();
+    //將手牌點數整理成二維陣列，後續將進一步取排列組合之最大最小值
+    for(i=0; i<MAX_DEAL_NUMBER; i++){
+        cardIdx=*(hand->card+i);
+        if(cardIdx<0) // 代表尚未被發牌
+            break;
+        card = cards+cardIdx;
+        points[i][0]=card->point;
+        points[i][1]=card->altPoint;
+    }
+    getHighLowPoints(*points, highPoint, lowPoint);
+
+    pressAnyKeyToContinue();
+}
+
+/**
+ * @brief 從手牌各張的可能點數做排列組合取最大值和最小值
+ * @param arr 二維陣列倒退一維的指標
+ * @see https://www.geeksforgeeks.org/combinations-from-n-arrays-picking-one-element-from-each-array/
+ */
+void getHighLowPoints(int* arr, int* highPoint, int* lowPoint){
+    int i,point,sum,next;
+    int indices[MAX_DEAL_NUMBER] ={0};
+
+    while (1) {
+        sum=0;
+        //TODO 取排列組合之最大最小值
+        for (i = 0; i < MAX_DEAL_NUMBER; i++){
+            point = *(arr+i*CARD_POINT_POSSIBILITY+indices[i]);
+            sum+=point;
+            if(i)
+                printf("+%d",point);
+            else
+                printf("%d",point);
+        }
+        printf("=%d  ",sum);
+
+        next = MAX_DEAL_NUMBER - 1;
+        while (next >= 0 && (indices[next] + 1 >= CARD_POINT_POSSIBILITY))
+            next--;
+
+        if (next < 0)
+            return;
+
+        indices[next]++;
+
+        for (int i = next + 1; i < MAX_DEAL_NUMBER; i++)
+            indices[i] = 0;
+    }
 }
 
 // +----------------------------------------+

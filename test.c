@@ -1,14 +1,64 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 #define ARRAY_SIZE 2
+#define ROW 5
+#define COL 2
 
 void testDummy2dArray();
 void dump2dArr(int* arr, int row, int col);
+void demoNArrayCombination();
+void nArrayCombination(int* arr);
 
 int main(){
-    testDummy2dArray();
+    demoNArrayCombination();
     return 0;
+}
+
+void demoNArrayCombination(){
+    int points[ROW][COL]={
+        {1,11},
+        {1,11},
+        {1,11},
+        {1,11},
+        {1,11}
+    };
+    nArrayCombination(*points);
+}
+
+/**
+ * @brief 從多個陣列裏各挑出一個值的排列組合
+ * @see https://www.geeksforgeeks.org/combinations-from-n-arrays-picking-one-element-from-each-array/
+ */
+void nArrayCombination(int* arr){
+    int i,point,sum,next;
+    int indices[ROW] ={0};
+
+    while (1) {
+        sum=0;
+        for (i = 0; i < ROW; i++){
+            point = *(arr+i*COL+indices[i]);
+            sum+=point;
+            if(i)
+                printf("+%d",point);
+            else
+                printf("%d",point);
+        }
+        printf("=%d  ",sum);
+
+        next = ROW - 1;
+        while (next >= 0 && (indices[next] + 1 >= COL))
+            next--;
+
+        if (next < 0)
+            return;
+
+        indices[next]++;
+
+        for (int i = next + 1; i < ROW; i++)
+            indices[i] = 0;
+    }
 }
 
 void testDummy2dArray(){
@@ -48,5 +98,3 @@ void dump2dArr(int* arr, int row, int col){
         }
     }
 }
-
-
