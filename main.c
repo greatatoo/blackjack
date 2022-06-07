@@ -33,8 +33,8 @@
 #define STRING_INDENT 35                //顯示字串縮排
 #define FIELD_KEY_WIDTH 10              //欄位Key寛度
 #define FIELD_VALUE_WIDTH 20            //欄位Value寛度
-#define DEFAULT_CHIP 1000               //預設發放籌碼
-#define PLAYERS_DAT_FILE "players.dat"  //玩家資料檔案
+#define DEFAULT_CHIP 5000               //預設發放籌碼
+#define PLAYERS_DAT_FILE "Players.dat"  //玩家資料檔案
 #define MAX_SPLIT_NUMBER 4*DECK_NUMBER  //最大分牌數量
 #define MAX_DEAL_NUMBER 5               //最大發牌數量
 #define CARD_POINT_POSSIBILITY 2        //卡牌點數的可能數
@@ -63,13 +63,14 @@ typedef struct{
 //定義牌局資料型態和牌局屬性 (參考課程 ch10 p15)
 typedef struct{
     int card[MAX_DEAL_NUMBER]; //手牌
-    boolean banker; //是否為莊家
-    boolean insurance; //保險
+    boolean banker;     //是否為莊家
+    boolean split;      //分牌
+    boolean insurance;  //保險
     boolean doubleDown; //雙倍下注
-    boolean surrender; //投降
-    boolean stand;     //停牌
-    boolean bust;      //爆牌
-    int bet; //下注
+    boolean surrender;  //投降
+    boolean stand;      //停牌
+    boolean bust;       //爆牌
+    int bet;            //下注
 } Hand;
 
 //定義玩家資料型態和玩家屬性 (參考課程 ch10 p15)
@@ -78,7 +79,8 @@ typedef struct{
     int chip;           //籌碼
     int playCount;      //玩牌次數
     int winCount;       //贏的次數
-    int loseCount;      //輸的次數
+    int drawCount;      //平手次數
+    int lossCount;      //輸的次數
     int blackjackCount; //拿到黑傑克的次數
 } Player;
 
@@ -155,8 +157,9 @@ void mainMenu(){
         showWelcome();
 
         indent = STRING_INDENT- 18/2; //18來自下列字串的最大長度18個字
-        printf("%*s%s\n", indent, " ", "2) dumpPlayers");
+
         printf("%*s%s\n", indent, " ", "1) Play");
+        printf("%*s%s\n", indent, " ", "2) Leaderboard");
         printf("%*s%s\n", indent, " ", "0) Quit");
         printf("\n%*s%s", indent, " ", "Choice:");
     }while((choice=getchar())!='0');
@@ -187,7 +190,8 @@ void playCardScene(){
         player.chip = DEFAULT_CHIP;
         player.playCount = 0;
         player.winCount = 0;
-        player.loseCount = 0;
+        player.drawCount = 0;
+        player.lossCount = 0;
         player.blackjackCount = 0;
         savePlayer(&player);
     }
@@ -215,19 +219,19 @@ void playCardScene(){
             clearScreen();
 
             indent = STRING_INDENT-13/2; //13來自下列字串的最大長度13個字
-            printf("%*s%s\n\n", indent, " ", "PlayCardScene");
-            printf("%*s%s\n", indent, " ", "1) Play again");
+            //顯示Player資料
+            printPlayer(&player);
+            printf("%*s%s\n", indent, " ", "1) Continue");
             printf("%*s%s\n", indent, " ", "0) Quit");
             printf("\n%*s%s", indent, " ", "Choice:");
             break;
         case '?':
             indent = STRING_INDENT-7/2; //7來自下列字串的最大長度7個字
-            printf("%*s%s\n", indent, " ", "1) GO");
+            printf("%*s%s\n", indent, " ", "1) Begin");
             printf("%*s%s\n", indent, " ", "0) Quit");
             printf("\n%*s%s", indent, " ", "Choice:");
             break;
         }
-
     }while((choice=getchar())!='0');
 
     //儲存玩家資料
@@ -244,12 +248,15 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
 
     clearScreen();
 
-    //向玩家發一張牌
-    dealCard(&nextCardIndex, playerHands, cards);
-    dumpHands(playerHands, cards);
-    //向莊家發一張牌
-    dealCard(&nextCardIndex, bankerHands, cards);
-    dumpHands(bankerHands, cards);
+    //開局先對玩家和莊家發牌兩輪
+    for(i=0; i<2; i++){
+        //向玩家發一張牌
+        dealCard(&nextCardIndex, playerHands, cards);
+        //向莊家發一張牌
+        dealCard(&nextCardIndex, bankerHands, cards);
+    }
+//    dumpHands(playerHands, cards);
+//    dumpHands(bankerHands, cards);
 
     //dumpCards(cards);
 
@@ -267,7 +274,7 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
 void inputPlayerName(char* playerName){
     clearScreen();
     int indent = STRING_INDENT-23/2; //23來自下列字串的最大長度23個字
-    printf("%*sPlease enter your name:", indent, " ");
+    printf("\n\n\n%*sPlease enter your name:", indent, " ");
     scanf("%s", playerName);
 }
 
@@ -294,7 +301,8 @@ void readPlayerByName(Player* player, char* playerName){
         player->chip = tmp.chip;
         player->playCount = tmp.playCount;
         player->winCount = tmp.winCount;
-        player->loseCount = tmp.loseCount;
+        player->drawCount = tmp.drawCount;
+        player->lossCount = tmp.lossCount;
         player->blackjackCount = tmp.blackjackCount;
         break;
     }
@@ -363,6 +371,7 @@ void initHands(Hand* hands, boolean isBanker){
         for(j=0; j<MAX_DEAL_NUMBER; j++)
             *(hand->card+j)=-1;
         hand->banker = isBanker;
+        hand->split = FALSE;
         hand->insurance = FALSE;
         hand->doubleDown = FALSE;
         hand->surrender = FALSE;
@@ -519,13 +528,14 @@ void printPlayer(Player* player){
     int ident = STRING_INDENT-(FIELD_KEY_WIDTH+FIELD_VALUE_WIDTH)/2;
 
     printf("\n%*s+---------------------------------+\n", ident, " ");
-    printf("%*s|           Player Info           |\n", ident, " ");
+    printf("%*s|          Player Stats           |\n", ident, " ");
     printf("%*s+---------------------------------+\n", ident, " ");
     printf("%*s| %*s %*s |\n", ident, " ", FIELD_KEY_WIDTH, "Player", FIELD_VALUE_WIDTH, player->name);
-    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Chip", FIELD_VALUE_WIDTH, player->chip);
-    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Play", FIELD_VALUE_WIDTH, player->playCount);
-    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Win", FIELD_VALUE_WIDTH, player->winCount);
-    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Lose", FIELD_VALUE_WIDTH, player->loseCount);
+    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Chips", FIELD_VALUE_WIDTH, player->chip);
+    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Plays", FIELD_VALUE_WIDTH, player->playCount);
+    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Wins", FIELD_VALUE_WIDTH, player->winCount);
+    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Draws", FIELD_VALUE_WIDTH, player->drawCount);
+    printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Losses", FIELD_VALUE_WIDTH, player->lossCount);
     printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Black Jack", FIELD_VALUE_WIDTH, player->blackjackCount);
     printf("%*s%s\n\n", ident, " ", "+---------------------------------+");
 }
@@ -554,12 +564,13 @@ void dumpPlayer(Player* player){
     if(!strlen(player->name))
         return;
 
-    printf("Player name=%s chip=%d play=%d win=%d lose=%d blackjack=%d\n",
+    printf("Player name=%s chip=%d play=%d win=%d draw=%d loss=%d blackjack=%d\n",
            player->name,
            player->chip,
            player->playCount,
            player->winCount,
-           player->loseCount,
+           player->drawCount,
+           player->lossCount,
            player->blackjackCount
            );
 }
@@ -644,9 +655,10 @@ void printHand(Hand* hand, Card* cards){
     int j,k,ascii;
     int highPoint, safeHightPoint, lowPoint;
 
-    printf("%s hand bet=%d insurance=%s double=%s surrender=%s stand=%s bust=%s",
+    printf("%s hand bet=%d split=%s insurance=%s double=%s surrender=%s stand=%s bust=%s",
            (hand->banker?"Banker":"Player"),
            hand->bet,
+           hand->split?"O":"X",
            hand->insurance?"O":"X",
            hand->doubleDown?"O":"X",
            hand->surrender?"O":"X",
@@ -956,7 +968,8 @@ void makeDummyPlayer(){
         dummyPlayers[i].chip = 10000;
         dummyPlayers[i].playCount = 0;
         dummyPlayers[i].winCount = 0;
-        dummyPlayers[i].loseCount = 0;
+        dummyPlayers[i].drawCount = 0;
+        dummyPlayers[i].lossCount = 0;
         dummyPlayers[i].blackjackCount = 0;
 
         printf("Dummy Player%d %s has been created.\n",i, dummyPlayers[i].name);
@@ -970,7 +983,8 @@ void makeDummyPlayer(){
                dummyPlayers[i].chip,
                dummyPlayers[i].playCount,
                dummyPlayers[i].winCount,
-               dummyPlayers[i].loseCount,
+               dummyPlayers[i].drawCount,
+               dummyPlayers[i].lossCount,
                dummyPlayers[i].blackjackCount
                );
     }
