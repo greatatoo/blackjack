@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 #include <windows.h>
 
 /*
@@ -37,6 +38,7 @@
 #define MAX_SPLIT_NUMBER 4*DECK_NUMBER  //最大分牌數量
 #define MAX_DEAL_NUMBER 5               //最大發牌數量
 #define CARD_POINT_POSSIBILITY 2        //卡牌點數的可能數
+#define MAX_POINTS_COMBINATION 32       //多張卡牌點數的排列組合數
 #define DEFAULT_BET 50                  //預設下注額
 
 //定義花色 (參考課程 ch10 p24)
@@ -96,8 +98,8 @@ void initHands(Hand* hands, boolean isBanker); //初始化手牌
 void initCards(Card* cards); //初始化牌堆
 void shuffleCards(Card* cards); //洗牌
 void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards); //發牌給玩家或莊家
-void computeHand(Hand* hand, Card* cards, int* highPoint, int* lowPoint); //計算手牌點數並更新狀態
-void getHighLowPoints(int* arr, int* highPoint, int* lowPoint); //取得手牌組合點數的最大值和最小值
+void computeHand(Hand* hand, Card* cards, int* highPoint, int* safeHightPoint, int* lowPoint); //計算手牌點數並更新狀態
+void getHighLowPoints(int* arr, int* highPoint, int* safeHightPoint, int* lowPoint); //取得手牌組合點數的最大值和最小值
 // +----------------------------------------+
 // |                資料渲染
 // +----------------------------------------+
@@ -145,11 +147,7 @@ void mainMenu(){
         case '1':
             playCardScene();
             break;
-        case '2': //XXX 純測試用，將來移除
-            //testRenderCard(1);
-            makeDummyPlayer();
-            break;
-        case '3': //XXX 純測試用，將來移除
+        case '2':
             dumpPlayers();
             break;
         }
@@ -157,8 +155,7 @@ void mainMenu(){
         showWelcome();
 
         indent = STRING_INDENT- 18/2; //18來自下列字串的最大長度18個字
-        printf("%*s%s\n", indent, " ", "3) dumpPlayers");
-        printf("%*s%s\n", indent, " ", "2) makeDummyPlayer");
+        printf("%*s%s\n", indent, " ", "2) dumpPlayers");
         printf("%*s%s\n", indent, " ", "1) Play");
         printf("%*s%s\n", indent, " ", "0) Quit");
         printf("\n%*s%s", indent, " ", "Choice:");
@@ -174,11 +171,11 @@ void playCardScene(){
      */
     int indent = 0; //字串縮排
     char choice = '?'; //選單號碼
-    char playerName[MAX_PLAYER_NAME_SIZE] = {0}; //玩家名稱
+    char playerName[MAX_PLAYER_NAME_SIZE] = {0};//玩家名稱
     Player player = {0}; //玩家資料
-    Card cards[DECK_NUMBER*CARD_NUMBER] = {0}; //牌堆
-    Hand bankerHands[MAX_SPLIT_NUMBER] = {0}; //莊家手牌
-    Hand playerHands[MAX_SPLIT_NUMBER] = {0}; //玩家手牌
+    Card cards[DECK_NUMBER*CARD_NUMBER] = {0};  //牌堆
+    Hand bankerHands[MAX_SPLIT_NUMBER] = {0};   //莊家手牌
+    Hand playerHands[MAX_SPLIT_NUMBER] = {0};   //玩家手牌
 
     //要求使用者輸入玩家名稱
     inputPlayerName(playerName);
@@ -199,15 +196,17 @@ void playCardScene(){
 
     //顯示Player資料
     printPlayer(&player);
+    //初始牌堆
+    initCards(cards);
 
     do{
         switch(choice){
         case '1':
+            //玩家計次
+            player.playCount+=1;
             //初始手牌
             initHands(bankerHands, TRUE);
             initHands(playerHands, FALSE);
-            //初始牌堆
-            initCards(cards);
             //洗牌
             shuffleCards(cards);
             //黑傑克邏輯
@@ -230,6 +229,9 @@ void playCardScene(){
         }
 
     }while((choice=getchar())!='0');
+
+    //儲存玩家資料
+    savePlayer(&player);
 }
 
 /**
@@ -242,18 +244,14 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
 
     clearScreen();
 
-    //向莊家發一張牌
-    dealCard(&nextCardIndex, bankerHands, cards);
-    dealCard(&nextCardIndex, bankerHands, cards);
-    dealCard(&nextCardIndex, bankerHands, cards);
-    dumpHands(bankerHands, cards);
     //向玩家發一張牌
     dealCard(&nextCardIndex, playerHands, cards);
-    dealCard(&nextCardIndex, playerHands, cards);
-    dealCard(&nextCardIndex, playerHands, cards);
     dumpHands(playerHands, cards);
+    //向莊家發一張牌
+    dealCard(&nextCardIndex, bankerHands, cards);
+    dumpHands(bankerHands, cards);
 
-    dumpCards(cards);
+    //dumpCards(cards);
 
     pressAnyKeyToContinue();
 }
@@ -307,32 +305,49 @@ void readPlayerByName(Player* player, char* playerName){
  * @brief 將玩家資料儲存到檔案
  * @param player
  */
-void savePlayer(Player* player){
+void savePlayer(Player* player){   
     if(!strlen(player->name))
         return;
 
     FILE *fp;
     errno_t err;
     Player tmp={0}; //必須初始化struct內的值為 0
+    boolean isPlayerFound = FALSE;
     int playerIndexInFile = -1;
 
-    err=fopen_s(&fp,PLAYERS_DAT_FILE,"a+b");
+    err=fopen_s(&fp,PLAYERS_DAT_FILE,"ab+");
     if(err)
         return;
 
+    //尋找玩家
     while(!feof(fp)){
         fread(&tmp, sizeof(Player), 1, fp);
-
         playerIndexInFile++;
 
         if(!strlen(tmp.name))
-            continue;
-        if(strcmp(tmp.name, player->name)==0)
             break;
+
+        if(strcmp(tmp.name, player->name)==0){
+            isPlayerFound = TRUE;
+            break;
+        }
     }
-    fseek(fp, playerIndexInFile*sizeof(Player), SEEK_SET);
-    fwrite(player, sizeof(Player), 1, fp);
     fclose(fp);
+
+    if(isPlayerFound){//更新玩家資料
+        err=fopen_s(&fp,PLAYERS_DAT_FILE,"rb+");
+        if(err)
+            return;
+        fseek(fp, playerIndexInFile*sizeof(Player), SEEK_SET);
+        fwrite(player, sizeof(Player), 1, fp);
+        fclose(fp);
+    }else{//新增玩家資料
+        err=fopen_s(&fp,PLAYERS_DAT_FILE,"ab+");
+        if(err)
+            return;
+        fwrite(player, sizeof(Player), 1, fp);
+        fclose(fp);
+    }
 }
 
 /**
@@ -627,6 +642,7 @@ void dumpCards(Card* cards){
 
 void printHand(Hand* hand, Card* cards){
     int j,k,ascii;
+    int highPoint, safeHightPoint, lowPoint;
 
     printf("%s hand bet=%d insurance=%s double=%s surrender=%s stand=%s bust=%s",
            (hand->banker?"Banker":"Player"),
@@ -671,7 +687,9 @@ void printHand(Hand* hand, Card* cards){
         else
             printf(",%c %s",ascii, (cards+k)->face);
     }
-    printf("]\n");
+
+    computeHand(hand, cards, &highPoint, &safeHightPoint, &lowPoint);
+    printf("] high=%d safe=%d low=%d\n",highPoint, safeHightPoint, lowPoint);
 }
 
 void dumpHand(Hand* hand, Card* cards){
@@ -700,7 +718,18 @@ void shuffleCards(Card* cards){
     int loop, ptrIdx;
     int total = DECK_NUMBER*CARD_NUMBER;
     Card hold;
+    int i,j;
+    Card* card;
 
+    //重新給予order值
+    for(i=0; i<DECK_NUMBER; i++){
+        for(j=0; j<CARD_NUMBER; j++){
+            card = cards+i*CARD_NUMBER+j;
+            card->order = rand();
+        }
+    }
+
+    //依order值排序
     for(loop=1; loop<total; loop++){
         for(ptrIdx=0; ptrIdx<total-1; ptrIdx++){
             //如果前者的order > 後者的order，則兩者互相交換
@@ -743,6 +772,7 @@ void shuffleCards(Card* cards){
  */
 void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
     int i,j;
+    int safeHightPoint;
     int highPoint;
     int lowPoint;
     boolean isDeal = FALSE;
@@ -764,6 +794,8 @@ void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
         for(j=0; j<MAX_DEAL_NUMBER; j++){
             if(*(hand->card+j)==-1){ // -1代表尚未被發牌
                 *(hand->card+j) = *nextCardIndex;
+                //卡牌計次
+                (cards+(*nextCardIndex))->appeared+=1;
                 //發牌後，將下一張牌的index++
                 (*nextCardIndex)++;
                 isDeal = TRUE;
@@ -772,13 +804,10 @@ void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
         }
 
         if(isDeal){
-            //TODO 計算點數，依點數更新其它狀態如 bust
             highPoint=0;
+            safeHightPoint=0;
             lowPoint=0;
-            computeHand(hand, cards, &highPoint, &lowPoint);
-
-            dumpHand(hand, cards);
-
+            computeHand(hand, cards, &highPoint, &safeHightPoint, &lowPoint);
             break;
         }
     }
@@ -789,12 +818,11 @@ void dealCard(int* nextCardIndex, Hand* playerHands, Card* cards){
  * @param hand
  * @param cards
  */
-void computeHand(Hand* hand, Card* cards, int* highPoint, int* lowPoint){
-    int i,cardIdx,high,low;
+void computeHand(Hand* hand, Card* cards, int* highPoint, int* safeHightPoint, int* lowPoint){
+    int i,cardIdx;
     Card* card;
     int points[MAX_DEAL_NUMBER][CARD_POINT_POSSIBILITY]={0};
 
-    clearScreen();
     //將手牌點數整理成二維陣列，後續將進一步取排列組合之最大最小值
     for(i=0; i<MAX_DEAL_NUMBER; i++){
         cardIdx=*(hand->card+i);
@@ -804,9 +832,10 @@ void computeHand(Hand* hand, Card* cards, int* highPoint, int* lowPoint){
         points[i][0]=card->point;
         points[i][1]=card->altPoint;
     }
-    getHighLowPoints(*points, highPoint, lowPoint);
+    getHighLowPoints(*points, highPoint, safeHightPoint, lowPoint);
 
-    pressAnyKeyToContinue();
+    if(*lowPoint > 21)
+        hand->bust = TRUE;
 }
 
 /**
@@ -814,35 +843,71 @@ void computeHand(Hand* hand, Card* cards, int* highPoint, int* lowPoint){
  * @param arr 二維陣列倒退一維的指標
  * @see https://www.geeksforgeeks.org/combinations-from-n-arrays-picking-one-element-from-each-array/
  */
-void getHighLowPoints(int* arr, int* highPoint, int* lowPoint){
+void getHighLowPoints(int* arr, int* highPoint, int* safeHightPoint, int* lowPoint){
     int i,point,sum,next;
     int indices[MAX_DEAL_NUMBER] ={0};
+    int candidate[MAX_POINTS_COMBINATION];
+    int candidatePush=0;
+    int high=0;
+    int low=0;
+    int safeHigh=0;
+
+    //初始化陣列
+    for(i=0; i<MAX_POINTS_COMBINATION; i++)
+        candidate[i]=0;
 
     while (1) {
         sum=0;
-        //TODO 取排列組合之最大最小值
         for (i = 0; i < MAX_DEAL_NUMBER; i++){
             point = *(arr+i*CARD_POINT_POSSIBILITY+indices[i]);
             sum+=point;
-            if(i)
-                printf("+%d",point);
-            else
-                printf("%d",point);
+//            if(i)
+//                printf("+%d",point);
+//            else
+//                printf("%d",point);
         }
-        printf("=%d  ",sum);
+//        printf("=%d  ",sum);
+        candidate[candidatePush++]=sum;
 
         next = MAX_DEAL_NUMBER - 1;
         while (next >= 0 && (indices[next] + 1 >= CARD_POINT_POSSIBILITY))
             next--;
 
         if (next < 0)
-            return;
+            break;
 
         indices[next]++;
 
-        for (int i = next + 1; i < MAX_DEAL_NUMBER; i++)
+        for (i = next + 1; i < MAX_DEAL_NUMBER; i++)
             indices[i] = 0;
     }
+
+    //找最高分、最低分
+    for(i=0,high=candidate[0],low=candidate[0]; i<MAX_POINTS_COMBINATION; i++){
+        if(candidate[i]<low)
+            low = candidate[i];
+        if(candidate[i]>high)
+            high = candidate[i];
+    }
+    //找安全最高分
+    for(i=0,safeHigh=low; i<MAX_POINTS_COMBINATION; i++){
+        if(candidate[i]<=21 && candidate[i]>safeHigh)
+            safeHigh = candidate[i];
+    }
+
+    *highPoint=high;
+    *safeHightPoint=safeHigh;
+    *lowPoint=low;
+
+    //列出點數排列組合可能值
+//    printf("\n[");
+//    for(i=0; i<MAX_POINTS_COMBINATION; i++){
+//        if(i==0)
+//            printf("%d",candidate[i]);
+//        else
+//            printf(",%d",candidate[i]);
+//    }
+//    printf("] high=%d safe=%d low=%d\n", high, safeHigh, low);
 }
 
 // +----------------------------------------+
