@@ -89,7 +89,7 @@ typedef struct{
 // +----------------------------------------+
 void mainMenu(); //主功能選單
 void playCardScene(); //玩一場牌局的場景
-void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands); //黑傑克邏輯
+void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player); //黑傑克邏輯
 // +----------------------------------------+
 // |                資料處理
 // +----------------------------------------+
@@ -107,6 +107,7 @@ void getHighLowPoints(int* arr, int* highPoint, int* safeHightPoint, int* lowPoi
 // +----------------------------------------+
 void showWelcome(); //顯示歡迎畫面
 void printPlayer(Player* player); //印出玩家資料
+void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player); //印出桌面上的牌
 // +----------------------------------------+
 // |                輔助功能
 // +----------------------------------------+
@@ -182,6 +183,8 @@ void playCardScene(){
 
     //要求使用者輸入玩家名稱
     inputPlayerName(playerName);
+    if(!strlen(playerName))
+        return;
     //以玩家名稱讀取玩家資料
     readPlayerByName(&player, playerName);
     //初始化新玩家
@@ -214,7 +217,7 @@ void playCardScene(){
             //洗牌
             shuffleCards(cards);
             //黑傑克邏輯
-            blackjackLogic(cards, bankerHands, playerHands);
+            blackjackLogic(cards, bankerHands, playerHands, &player);
 
             clearScreen();
 
@@ -241,7 +244,7 @@ void playCardScene(){
 /**
  * @brief 黑傑克遊戲邏輯
  */
-void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
+void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player){
     int nextCardIndex = 0;
     int i,j;
     Hand* hand;
@@ -255,10 +258,10 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
         //向莊家發一張牌
         dealCard(&nextCardIndex, bankerHands, cards);
     }
-//    dumpHands(playerHands, cards);
-//    dumpHands(bankerHands, cards);
-
+    //dumpHands(playerHands, cards);
+    //dumpHands(bankerHands, cards);
     //dumpCards(cards);
+    printDesktop(cards, bankerHands, playerHands, player);
 
     pressAnyKeyToContinue();
 }
@@ -272,10 +275,26 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands){
  * scanf 參考 ch02 p19
  */
 void inputPlayerName(char* playerName){
-    clearScreen();
+    char choice;
+    char inputName[MAX_PLAYER_NAME_SIZE]={0};
     int indent = STRING_INDENT-23/2; //23來自下列字串的最大長度23個字
+
+    clearScreen();
+
     printf("\n\n\n%*sPlease enter your name:", indent, " ");
-    scanf("%s", playerName);
+    scanf("%s", inputName);
+    printf("\n%*sYou will play with account '%s'.\n\n", indent, " ", inputName);
+    printf("%*s1) Yes\n", indent, "");
+    printf("%*s0) No\n\n", indent, "");
+    printf("%*sChoice:", indent, "");
+    getchar();//消耗上面 scanf 按下的 enter
+    choice=getchar();
+
+    switch(choice){
+    case '1':
+        strcpy_s(playerName, sizeof(playerName), inputName);
+        break;
+    }
 }
 
 /**
@@ -538,6 +557,95 @@ void printPlayer(Player* player){
     printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Losses", FIELD_VALUE_WIDTH, player->lossCount);
     printf("%*s| %*s %*d |\n", ident, " ", FIELD_KEY_WIDTH, "Black Jack", FIELD_VALUE_WIDTH, player->blackjackCount);
     printf("%*s%s\n\n", ident, " ", "+---------------------------------+");
+}
+
+/**
+ * @brief 印出桌面上的牌
+ * @param cards
+ * @param bankerHands
+ * @param playerHands
+ */
+void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player){
+    char* singleLine =  "+----------+----------------------------------------+------+-------------------+";
+    char* doubleLine =  "+==============================================================================+";
+    int h,c,i,j,cardCount;
+    char cardsCell[40]={0};
+    char tmp[40]={0};
+    Hand* tmpHand;
+    Card* tmpCard;
+    int ascii;
+
+    printf("%s\n", singleLine);
+    //玩家手牌
+    for(h=0; h<MAX_SPLIT_NUMBER; h++){
+        tmpHand = playerHands+h;
+        //判斷這一手牌是否有下注開始玩
+        if(!tmpHand->bet)
+            continue;
+        //計算這一手牌目前發了幾張牌
+        for(c=0,cardCount=0; c<MAX_DEAL_NUMBER; c++){
+            if(*(tmpHand->card+c)>=0)
+                cardCount++;
+        }
+        for(i=0; i<4; i++){//每張卡牌的高佔4列
+            switch(i){
+            case 0://第一列
+                cardsCell[0]='\0';
+                //顯示每張手牌的第一列
+                for(c=0; c<cardCount; c++){
+                    sprintf(tmp,"%c%c%c%c%c%c",32,218,196,196,196,191);
+                    strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+                }
+                printf("|%10s|%-40s|%6s|%19s|\n"," ", cardsCell," "," "," ");
+                break;
+            case 1://第二列
+                cardsCell[0]='\0';
+                //顯示每張手牌的第二列
+                for(c=0; c<cardCount; c++){
+                    //轉換 suit 為 ascii
+                    switch((cards+*(tmpHand->card+c))->suit){
+                    case SPADE:
+                        ascii = 6;
+                        break;
+                    case HEART:
+                        ascii = 3;
+                        break;
+                    case DIAMOND:
+                        ascii = 4;
+                        break;
+                    case CLUB:
+                        ascii = 5;
+                        break;
+                    }
+                    sprintf(tmp,"%c%c%c%c%c%c",32,179,ascii,32,32,179);
+                    strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+                }
+                printf("|%10s|%-40s|%6s|%19s|\n",player->name,cardsCell," "," "," ");
+                break;
+            case 2://第三列
+                cardsCell[0]='\0';
+                //顯示每張手牌的第三列
+                for(c=0; c<cardCount; c++){
+                    sprintf(tmp,"%c%c%c%2s%c",32,179,32,(cards+*(tmpHand->card+c))->face,179,32);
+                    strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+                }
+                printf("|%10s|%-40s|%6s|%19s|\n"," ",cardsCell," "," "," ");
+                break;
+            case 3://第四列
+                cardsCell[0]='\0';
+                //顯示每張手牌的第一列
+                for(c=0; c<cardCount; c++){
+                    sprintf(tmp,"%c%c%c%c%c%c",32,192,196,196,196,217);
+                    strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+                }
+                printf("|%10s|%-40s|%6s|%19s|\n"," ", cardsCell," "," "," ");
+                break;
+            }
+        }
+        printf("%s\n", singleLine);
+    }
+
+
 }
 
 // +----------------------------------------+
