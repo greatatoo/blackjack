@@ -71,6 +71,9 @@ typedef struct{
     boolean stand;      //停牌
     boolean bust;       //爆牌
     int bet;            //下注
+    int highPoint;       //最高點
+    int safeHighPoint;   //安全最高點
+    int lowPoint;       //最低點
 } Hand;
 
 //定義玩家資料型態和玩家屬性 (參考課程 ch10 p15)
@@ -279,10 +282,18 @@ void inputPlayerName(char* playerName){
     char inputName[MAX_PLAYER_NAME_SIZE]={0};
     int indent = STRING_INDENT-23/2; //23來自下列字串的最大長度23個字
 
-    clearScreen();
+    do{
+        clearScreen();
 
-    printf("\n\n\n%*sPlease enter your name:", indent, " ");
-    scanf("%s", inputName);
+        printf("\n\n\n%*sPlease enter your name:", indent, " ");
+        scanf("%s", inputName);
+        if(strlen(inputName)>7){
+            printf("\n%*sThe length of name must be less than 7.\n", indent, " ");
+            system("pause");
+        }else{
+            break;
+        }
+    }while(1);
     printf("\n%*sYou will play with account '%s'.\n\n", indent, " ", inputName);
     printf("%*s1) Yes\n", indent, "");
     printf("%*s0) No\n\n", indent, "");
@@ -397,6 +408,9 @@ void initHands(Hand* hands, boolean isBanker){
         hand->stand = FALSE;
         hand->bust = FALSE;
         hand->bet = i==0? DEFAULT_BET:0;
+        hand->highPoint = 0;
+        hand->safeHighPoint = 0;
+        hand->lowPoint = 0;
     }
 }
 
@@ -620,7 +634,7 @@ void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* pla
                     sprintf(tmp,"%c%c%c%c%c%c",32,179,ascii,32,32,179);
                     strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
                 }
-                printf("|%10s|%-40s|%6s|%19s|\n",player->name,cardsCell," "," "," ");
+                printf("| %8s |%-40s|  %2d  |%19s|\n",player->name,cardsCell,tmpHand->safeHighPoint," "," ");
                 break;
             case 2://第三列
                 cardsCell[0]='\0';
@@ -763,7 +777,7 @@ void printHand(Hand* hand, Card* cards){
     int j,k,ascii;
     int highPoint, safeHightPoint, lowPoint;
 
-    printf("%s hand bet=%d split=%s insurance=%s double=%s surrender=%s stand=%s bust=%s",
+    printf("%s hand bet=%d split=%s insurance=%s double=%s surrender=%s stand=%s bust=%s point=%d,%d,%d",
            (hand->banker?"Banker":"Player"),
            hand->bet,
            hand->split?"O":"X",
@@ -771,7 +785,10 @@ void printHand(Hand* hand, Card* cards){
            hand->doubleDown?"O":"X",
            hand->surrender?"O":"X",
            hand->stand?"O":"X",
-           hand->bust?"O":"X"
+           hand->bust?"O":"X",
+           hand->highPoint,
+           hand->safeHighPoint,
+           hand->lowPoint
            );
 
     printf(" card=[");
@@ -953,6 +970,10 @@ void computeHand(Hand* hand, Card* cards, int* highPoint, int* safeHightPoint, i
         points[i][1]=card->altPoint;
     }
     getHighLowPoints(*points, highPoint, safeHightPoint, lowPoint);
+
+    hand->highPoint = *highPoint;
+    hand->safeHighPoint = *safeHightPoint;
+    hand->lowPoint = *lowPoint;
 
     if(*lowPoint > 21)
         hand->bust = TRUE;
