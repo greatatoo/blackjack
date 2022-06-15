@@ -294,7 +294,7 @@ void inputPlayerName(char* playerName){
             break;
         }
     }while(1);
-    printf("\n%*sYou will play with account '%s'.\n\n", indent, " ", inputName);
+    printf("\n%*sYou're going to play with account '%s'.\n\n", indent, " ", inputName);
     printf("%*s1) Yes\n", indent, "");
     printf("%*s0) No\n\n", indent, "");
     printf("%*sChoice:", indent, "");
@@ -580,14 +580,13 @@ void printPlayer(Player* player){
  * @param playerHands
  */
 void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player){
-    char* singleLine =  "+----------+----------------------------------------+------+-------------------+";
-    char* doubleLine =  "+==============================================================================+";
     int h,c,i,j,cardCount;
     char cardsCell[40]={0};
     char tmp[40]={0};
     Hand* tmpHand;
-    Card* tmpCard;
     int ascii;
+
+    char* singleLine =  "+----------+----------------------------------------+------+-------------------+";
 
     printf("%s\n", singleLine);
     //玩家手牌
@@ -658,6 +657,73 @@ void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* pla
         }
         printf("%s\n", singleLine);
     }
+
+    //莊家手牌
+
+    tmpHand = bankerHands+0;//莊家只會有一手牌，所以 +0
+    //判斷是否該莊家出牌
+
+    //計算這一手牌目前發了幾張牌
+    for(c=0,cardCount=0; c<MAX_DEAL_NUMBER; c++){
+        if(*(tmpHand->card+c)>=0)
+            cardCount++;
+    }
+    for(i=0; i<4; i++){//每張卡牌的高佔4列
+        switch(i){
+        case 0://第一列
+            cardsCell[0]='\0';
+            //顯示每張手牌的第一列
+            for(c=0; c<cardCount; c++){
+                sprintf(tmp,"%c%c%c%c%c%c",32,218,196,196,196,191);
+                strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+            }
+            printf("|%10s|%-40s|%6s|%19s|\n"," ", cardsCell," "," "," ");
+            break;
+        case 1://第二列
+            cardsCell[0]='\0';
+            //顯示每張手牌的第二列
+            for(c=0; c<cardCount; c++){
+                //轉換 suit 為 ascii
+                switch((cards+*(tmpHand->card+c))->suit){
+                case SPADE:
+                    ascii = 6;
+                    break;
+                case HEART:
+                    ascii = 3;
+                    break;
+                case DIAMOND:
+                    ascii = 4;
+                    break;
+                case CLUB:
+                    ascii = 5;
+                    break;
+                }
+                sprintf(tmp,"%c%c%c%c%c%c",32,179,ascii,32,32,179);
+                strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+            }
+            printf("| %8s |%-40s|  %2d  |%19s|\n","Banker",cardsCell,tmpHand->safeHighPoint," "," ");
+            break;
+        case 2://第三列
+            cardsCell[0]='\0';
+            //顯示每張手牌的第三列
+            for(c=0; c<cardCount; c++){
+                sprintf(tmp,"%c%c%c%2s%c",32,179,32,(cards+*(tmpHand->card+c))->face,179,32);
+                strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+            }
+            printf("|%10s|%-40s|%6s|%19s|\n"," ",cardsCell," "," "," ");
+            break;
+        case 3://第四列
+            cardsCell[0]='\0';
+            //顯示每張手牌的第一列
+            for(c=0; c<cardCount; c++){
+                sprintf(tmp,"%c%c%c%c%c%c",32,192,196,196,196,217);
+                strcat_s(cardsCell, sizeof(cardsCell)/sizeof(cardsCell[0]), tmp);
+            }
+            printf("|%10s|%-40s|%6s|%19s|\n"," ", cardsCell," "," "," ");
+            break;
+        }
+    }
+    printf("%s\n", singleLine);
 
 
 }
