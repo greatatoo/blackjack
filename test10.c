@@ -8,7 +8,7 @@ typedef struct{
     int win;	//勝場數
     int play;	//遊玩場數
     int blackjack;	//黑傑克次數
-}Data;	//玩家的資料 
+}Data;	//玩家的資料
 
 int suit[]={6,6,6,6,6,6,6,6,6,6,6,6,6,
             3,3,3,3,3,3,3,3,3,3,3,3,3,
@@ -28,17 +28,17 @@ int face[]={1,2,3,4,5,6,7,8,9,10,11,12,13,
             1,2,3,4,5,6,7,8,9,10,11,12,13,
             1,2,3,4,5,6,7,8,9,10,11,12,13};	//點數牌堆
 
-int playerCard[2][10]={{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}};	//閒家手牌 
-int computerCard[2][10]={{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}};	//莊家手牌 
+int playerCard[2][10]={{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}};	//閒家手牌
+int computerCard[2][10]={{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}};	//莊家手牌
 
-int playerCardNumber=0,computerCardNumber=0,cardNumber=104;	//牌數 
+int playerCardNumber=0,computerCardNumber=0,cardNumber=104;	//牌數
 int playerPoint=0,computerPoint=0;	//點數和
 
-int i,j;	//計數 
-int choose1=0,choose2=0,choose3,choose4,choose5=0;	//玩家的選擇 
-int status=0;	//遊戲結果  
+int i,j;	//計數
+int choose1=0,choose2=0,choose3,choose4,choose5=0;	//玩家的選擇
+int status=0;	//遊戲結果
 
-Data playerData[5];	//五個玩家資料的陣列 
+Data playerData[5];	//五個玩家資料的陣列
 
 main(){
     while(choose1!=3){
