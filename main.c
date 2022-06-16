@@ -249,10 +249,13 @@ void playCardScene(){
  */
 void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player){
     int nextCardIndex = 0;
+    int indent = 0; //字串縮排
     int i,j;
-    Hand* hand;
+    char choice = '?';
+    Hand* currHand;
 
-    clearScreen();
+
+
 
     //開局先對玩家和莊家發牌兩輪
     for(i=0; i<2; i++){
@@ -264,9 +267,52 @@ void blackjackLogic(Card* cards, Hand* bankerHands, Hand* playerHands, Player* p
     //dumpHands(playerHands, cards);
     //dumpHands(bankerHands, cards);
     //dumpCards(cards);
-    printDesktop(cards, bankerHands, playerHands, player);
 
-    pressAnyKeyToContinue();
+    do{
+        clearScreen();
+        printDesktop(cards, bankerHands, playerHands, player);
+
+        //======尋找目前正在進行的手牌======
+        {
+            Hand* tmpHand;
+            currHand = NULL;
+            for(i=0; i<2; i++){
+                for(j=0; j<MAX_SPLIT_NUMBER; j++){
+                    if(i==0)
+                        tmpHand = playerHands+j;
+                    else
+                        tmpHand = bankerHands+j;
+                    //跳過沒下注的
+                    if(!tmpHand->bet)
+                        continue;
+                    //已停牌的
+                    if(tmpHand->stand)
+                        continue;
+                    //已爆牌的
+                    if(tmpHand->bust)
+                        continue;
+                    currHand = tmpHand;
+                    break;
+                }
+                if(currHand!=NULL)
+                    break;
+            }
+        }
+        //------尋找目前正在進行的手牌------
+
+        switch(choice){
+        case '1':
+            dumpHand(currHand, cards);
+            break;
+        case '?':
+            indent = STRING_INDENT-14/2; //14來自下列字串的最大長度7個字
+            printf("%*s%s\n", indent, " ", "1) CurrentHand");
+            printf("%*s%s\n", indent, " ", "0) Quit");
+            printf("\n%*s%s", indent, " ", "Choice:");
+            break;
+        }
+    }while((choice=getchar())!='0');
+
 }
 
 // +----------------------------------------+
@@ -580,7 +626,7 @@ void printPlayer(Player* player){
  * @param playerHands
  */
 void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* player){
-    int h,c,i,j,cardCount;
+    int h,c,i,cardCount;
     char cardsCell[40]={0};
     char tmp[40]={0};
     Hand* tmpHand;
@@ -589,7 +635,9 @@ void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* pla
     char* singleLine =  "+----------+----------------------------------------+------+-------------------+";
 
     printf("%s\n", singleLine);
-    //玩家手牌
+    //+----------+
+    //| 玩家手牌  |
+    //+----------+
     for(h=0; h<MAX_SPLIT_NUMBER; h++){
         tmpHand = playerHands+h;
         //判斷這一手牌是否有下注開始玩
@@ -658,8 +706,9 @@ void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* pla
         printf("%s\n", singleLine);
     }
 
-    //莊家手牌
-
+    //+----------+
+    //| 莊家手牌  |
+    //+----------+
     tmpHand = bankerHands+0;//莊家只會有一手牌，所以 +0
     //判斷是否該莊家出牌
 
@@ -724,8 +773,6 @@ void printDesktop(Card* cards, Hand* bankerHands, Hand* playerHands, Player* pla
         }
     }
     printf("%s\n", singleLine);
-
-
 }
 
 // +----------------------------------------+
@@ -842,6 +889,11 @@ void dumpCards(Card* cards){
 void printHand(Hand* hand, Card* cards){
     int j,k,ascii;
     int highPoint, safeHightPoint, lowPoint;
+
+    if(hand==NULL){
+        printf("null hand\n");
+        return;
+    }
 
     printf("%s hand bet=%d split=%s insurance=%s double=%s surrender=%s stand=%s bust=%s point=%d,%d,%d",
            (hand->banker?"Banker":"Player"),
