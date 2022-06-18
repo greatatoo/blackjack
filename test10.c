@@ -44,27 +44,27 @@ main(){
     while(choose1!=3){
         mainInterface();
         switch(choose1){
-            case 1:
-                readyInterface();
-                shuffle();
-                choose5=0;
-                while(choose5!=9){
-                    if(cardNumber>52){
-                        betInterface();
-                        if(choose5!=9)
+        case 1:
+            readyInterface();
+            shuffle();
+            choose5=0;
+            while(choose5!=9){
+                if(cardNumber>52){
+                    betInterface();
+                    if(choose5!=9)
                         play();
-                        resultInterface();
-                    }
-                    else{
-                        shuffle();
-                        cardNumber=104;
-                    }
+                    resultInterface();
                 }
-                break;
-            case 2:
-                recordInterface();
-            default:
-                break;
+                else{
+                    shuffle();
+                    cardNumber=104;
+                }
+            }
+            break;
+        case 2:
+            recordInterface();
+        default:
+            break;
         }
     }
 }
@@ -73,7 +73,7 @@ swap(int *a,int *b){
     int temp=*a;
     *a=*b;
     *b=temp;
-}	//交換指標內容 (兩個指標)
+}	//交換指標內容 (兩個指標) 
 
 randomize(int arr[]){
     srand(time(NULL));
@@ -81,12 +81,12 @@ randomize(int arr[]){
         int j=rand()%(i+1);
         swap(&arr[i],&arr[j]);
     }
-}	//洗牌演算法 (欲洗亂的陣列)
+}	//洗牌演算法 (欲洗亂的陣列) 
 
 shuffle(){
     randomize(suit);
     randomize(face);
-}	//洗牌
+}	//洗牌 
 
 deal(int arr[2][10],int *a,int b){
     for(i=1;i<=b;i++){
@@ -95,36 +95,36 @@ deal(int arr[2][10],int *a,int b){
     }
     *a=*a+b;
     cardNumber-=b;
-}	//由牌堆發牌到玩家手牌(發牌目的地，該副牌現有a張，發入b張)
+}	//由牌堆發牌到玩家手牌(發牌目的地，該副牌現有a張，發入b張) 
 
 counter(int arr[2][10],int *a){
     *a=0;
     j=0;
     for(i=1;i<=10;i++){
         switch(arr[1][i-1]){
-            case 1:
-                *a+=1;
-                j++;
-                break;
-            case 11:
-                *a+=10;
-                break;
-            case 12:
-                *a+=10;
-                break;
-            case 13:
-                *a+=10;
-                break;
-            default:
-                *a+=arr[1][i-1];
-                break;
+        case 1:
+            *a+=1;
+            j++;
+            break;
+        case 11:
+            *a+=10;
+            break;
+        case 12:
+            *a+=10;
+            break;
+        case 13:
+            *a+=10;
+            break;
+        default:
+            *a+=arr[1][i-1];
+            break;
         }
     }
     for(i=0;i<=j;i++){
         if(*a+10*i<=21)
-        *a=*a+10*i;
+            *a=*a+10*i;
     }
-}	//計算一副牌的最大牌點(欲計算的牌組，該副牌的牌點變數)
+}	//計算一副牌的最大牌點(欲計算的牌組，該副牌的牌點變數) 
 
 reset(){
     status=0;
@@ -138,7 +138,7 @@ reset(){
             computerCard[i-1][j-1]= 0;
         }
     }
-}	//重置遊戲相關變數
+}	//重置遊戲相關變數 
 
 result(){
     if(playerPoint<=21){
@@ -160,7 +160,7 @@ result(){
     else{
         status=1;
     }
-}	//判斷勝負
+}	//判斷勝負 
 
 bubbleSort(){
     for(i=1;i<=5;i++){
@@ -172,7 +172,7 @@ bubbleSort(){
             }
         }
     }
-}	//玩家的資料依籌碼排序
+}	//玩家的資料依籌碼排序  
 
 readData(){
     FILE *fp;
@@ -191,7 +191,7 @@ readData(){
             playerData[i].blackjack=0;
         }
     }
-}	//讀取玩家資料
+}	//讀取玩家資料 
 
 writeData(){
     FILE *fp;
@@ -200,23 +200,23 @@ writeData(){
         fprintf(fp,"%s %d %d %d %d\n",playerData[i].name,playerData[i].score,playerData[i].win,playerData[i].play,playerData[i].blackjack);
     }
     fclose(fp);
-}	//輸出玩家資料
+}	//輸出玩家資料 
 
 printCard(int arr[2][10],int n){
     int faceAscii[]={65,50,51,52,53,54,55,56,57,84,74,81,75};
 
     SetConsoleOutputCP(437);
     for(i=1;i<=n;i++)
-    printf("%c%c%c%c%c%c%c%c\t",218,196,196,196,196,196,196,191);
+        printf("%c%c%c%c%c%c%c%c\t",218,196,196,196,196,196,196,191);
     printf("\n");
     for(i=1;i<=n;i++)
-    printf("%c      %c\t",179,179);
+        printf("%c      %c\t",179,179);
     printf("\n");
     for(i=1;i<=n;i++)
-    printf("%c %c    %c\t",179,arr[0][i-1],179);
+        printf("%c %c    %c\t",179,arr[0][i-1],179);
     printf("\n");
     for(i=1;i<=n;i++)
-    printf("%c      %c\t",179,179);
+        printf("%c      %c\t",179,179);
     printf("\n");
     for(i=1;i<=n;i++){
         int k=arr[1][i-1];
@@ -224,13 +224,13 @@ printCard(int arr[2][10],int n){
     }
     printf("\n");
     for(i=1;i<=n;i++)
-    printf("%c      %c\t",179,179);
+        printf("%c      %c\t",179,179);
     printf("\n");
     for(i=1;i<=n;i++)
-    printf("%c%c%c%c%c%c%c%c\t",192,196,196,196,196,196,196,217);
+        printf("%c%c%c%c%c%c%c%c\t",192,196,196,196,196,196,196,217);
     printf("\n");
     SetConsoleOutputCP(950);
-}	//印出卡牌(欲印出的牌組，印出n張)
+}	//印出卡牌(欲印出的牌組，印出n張) 
 
 mainInterface(){
     system("cls");
@@ -249,7 +249,7 @@ mainInterface(){
     printf("【Menu】\n");
     printf("請輸入:[1]開始遊戲 [2]查看排行 [3]關閉遊戲......");
     scanf("%d",&choose1);
-}	//主畫面
+}	//主畫面 
 
 readyInterface(){
     readData();
@@ -276,7 +276,7 @@ readyInterface(){
         printf("請命名:");
         scanf("%s",playerData[choose4-1].name);
     }
-}	//遊戲準備畫面
+}	//遊戲準備畫面 
 
 playInterface(int a,int b){
     system("cls");
@@ -286,7 +286,7 @@ playInterface(int a,int b){
     printf("你的手牌:\n");
     printCard(playerCard,b);
     printf("請選擇:[1]要牌 [2]pass ......");
-}	//遊玩時的畫面 (顯示莊家a張牌，閒家b張牌)
+}	//遊玩時的畫面 (顯示莊家a張牌，閒家b張牌) 
 
 betInterface(){
     system("cls");
@@ -297,7 +297,7 @@ betInterface(){
         scanf("%d",&choose5);
     }while(choose5!=1&&choose5!=3&&choose5!=9);
     if(choose5==1||choose5==3)
-    playerData[choose4-1].score-=1000*choose5;
+        playerData[choose4-1].score-=1000*choose5;
 }
 
 resultInterface(){
@@ -306,32 +306,32 @@ resultInterface(){
         playerData[choose4-1].play+=1;
         printf("本次遊戲結果: ");
         switch(status){
-            case 1:
-                printf("莊家獲勝!! 現有籌碼: %d\n",playerData[choose4-1].score);
-                break;
-            case 2:
-                printf("莊家的牌為黑傑克!! 莊家獲勝!! 現有籌碼: %d\n",playerData[choose4-1].score);
-                break;
-            case 3:
-                printf("雙方點數相同!! +%d 現有籌碼: %d\n",1000*choose5,playerData[choose4-1].score);
-                playerData[choose4-1].score+=1000*choose5;
-                break;
-            case 4:
-                playerData[choose4-1].blackjack+=1;
-                printf("雙方同為黑傑克!! +%d 現有籌碼: %d\n",1000*choose5,playerData[choose4-1].score);
-                playerData[choose4-1].score+=1000*choose5;
-                break;
-            case 5:
-                playerData[choose4-1].score+=1000*choose5*2;
-                playerData[choose4-1].win+=1;
-                printf("你獲勝!! +%d 現有籌碼: %d\n",1000*choose5*2,playerData[choose4-1].score);
-                break;
-            case 6:
-                playerData[choose4-1].score+=1000*choose5*3;
-                playerData[choose4-1].win+=1;
-                playerData[choose4-1].blackjack+=1;
-                printf("你獲勝!! +%d 現有籌碼: %d\n",1000*choose5*3,playerData[choose4-1].score);
-                break;
+        case 1:
+            printf("莊家獲勝!! 現有籌碼: %d\n",playerData[choose4-1].score);
+            break;
+        case 2:
+            printf("莊家的牌為黑傑克!! 莊家獲勝!! 現有籌碼: %d\n",playerData[choose4-1].score);
+            break;
+        case 3:
+            printf("雙方點數相同!! +%d 現有籌碼: %d\n",1000*choose5,playerData[choose4-1].score);
+            playerData[choose4-1].score+=1000*choose5;
+            break;
+        case 4:
+            playerData[choose4-1].blackjack+=1;
+            printf("雙方同為黑傑克!! +%d 現有籌碼: %d\n",1000*choose5,playerData[choose4-1].score);
+            playerData[choose4-1].score+=1000*choose5;
+            break;
+        case 5:
+            playerData[choose4-1].score+=1000*choose5*2;
+            playerData[choose4-1].win+=1;
+            printf("你獲勝!! +%d 現有籌碼: %d\n",1000*choose5*2,playerData[choose4-1].score);
+            break;
+        case 6:
+            playerData[choose4-1].score+=1000*choose5*3;
+            playerData[choose4-1].win+=1;
+            playerData[choose4-1].blackjack+=1;
+            printf("你獲勝!! +%d 現有籌碼: %d\n",1000*choose5*3,playerData[choose4-1].score);
+            break;
         }
         printf("\n莊家的牌:\n");
         printCard(computerCard,computerCardNumber);
@@ -362,7 +362,7 @@ resultInterface(){
         printf("\n");
         system("pause");
     }
-}	//結算畫面
+}	//結算畫面 
 
 recordInterface(){
     readData();
@@ -371,12 +371,12 @@ recordInterface(){
     printf("現時排行:\nNo.     name    score   win   play   win_rate   blackjack\n");
     for(i=0;i<=4;i++){
         printf("%2d%10s%9d%6d%7d%10.2f%%%12d\n",
-        i+1,playerData[i].name,
-        playerData[i].score,
-        playerData[i].win,
-        playerData[i].play,
-        playerData[i].play==0? 0:((float)playerData[i].win/(float)playerData[i].play)*100,
-        playerData[i].blackjack);
+               i+1,playerData[i].name,
+               playerData[i].score,
+               playerData[i].win,
+               playerData[i].play,
+               playerData[i].play==0? 0:((float)playerData[i].win/(float)playerData[i].play)*100,
+               playerData[i].blackjack);
     }
     printf("\n");
     system("pause");
@@ -399,30 +399,30 @@ play(){
         scanf("%d",&choose2);
         Sleep(1000);
         switch(choose2){
-            case 1:
-                deal(playerCard,&playerCardNumber,1);
-                counter(playerCard,&playerPoint);
-                playInterface(1,playerCardNumber);
-                if(playerPoint>21){
-                    result();
-                    printf("你已爆牌! 3秒後將自動切換...");
-                    Sleep(3000);
-                }
-                break;
-            case 2:
-                playInterface(computerCardNumber,playerCardNumber);
-                while(computerPoint<17){
-                    deal(computerCard,&computerCardNumber,1);
-                    counter(computerCard,&computerPoint);
-                    Sleep(1000);
-                    playInterface(computerCardNumber,playerCardNumber);
-                }
-                Sleep(1000);
+        case 1:
+            deal(playerCard,&playerCardNumber,1);
+            counter(playerCard,&playerPoint);
+            playInterface(1,playerCardNumber);
+            if(playerPoint>21){
                 result();
-                break;
-            default:
-                printf("請選擇:[1]要牌 [2]pass ......");
-                break;
+                printf("你已爆牌! 3秒後將自動切換...");
+                Sleep(3000);
+            }
+            break;
+        case 2:
+            playInterface(computerCardNumber,playerCardNumber);
+            while(computerPoint<17){
+                deal(computerCard,&computerCardNumber,1);
+                counter(computerCard,&computerPoint);
+                Sleep(1000);
+                playInterface(computerCardNumber,playerCardNumber);
+            }
+            Sleep(1000);
+            result();
+            break;
+        default:
+            printf("請選擇:[1]要牌 [2]pass ......");
+            break;
         }
     }
-}	//遊玩函式
+}	//遊玩函式 
